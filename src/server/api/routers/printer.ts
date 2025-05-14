@@ -152,7 +152,7 @@ export const printerRouter = createTRPCRouter({
           
           // Default printer options for other printers
           const defaultOptions = {
-            "media": "a4",
+            "media": "a3",
             "fit-to-page": "true",
             "print-quality": "high",
           };

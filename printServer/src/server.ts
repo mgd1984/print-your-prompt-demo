@@ -100,7 +100,7 @@ const canonProOptions: Record<string, string> = {
 
 // Default printer options
 const defaultOptions: Record<string, string> = {
-  "media": "a4",
+  "media": "a3",
   "fit-to-page": "true",
   "print-quality": "high",
 };
