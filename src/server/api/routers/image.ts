@@ -122,14 +122,31 @@ export const imageRouter = createTRPCRouter({
                 try {
                   const buffer = Buffer.from(resultObj.b64_json, 'base64');
                   
-                  // Save as JPEG and TIFF
-                  const { jpegUrl, tiffPath } = await saveImages(buffer, "image");
-                  console.log("Base64 image saved:", jpegUrl);
+                  // Check if we're in Vercel environment
+                  const isVercel = process.env.VERCEL === '1';
                   
-                  return {
-                    imageUrl: jpegUrl,
-                    filePath: tiffPath, // Return TIFF path for high-quality printing
-                  };
+                  if (isVercel) {
+                    // In Vercel: We don't want to save the base64 image to a file
+                    // Instead, we'll create a data URL that can be used directly
+                    console.log("Running in Vercel environment - creating data URL from base64");
+                    const format = "jpeg"; // Default to JPEG format for base64 images
+                    const dataUrl = `data:image/${format};base64,${resultObj.b64_json}`;
+                    console.log("Created data URL for Vercel environment");
+                    
+                    return {
+                      imageUrl: dataUrl,
+                      filePath: '' // No file path in Vercel
+                    };
+                  } else {
+                    // Save as JPEG and TIFF in local environment
+                    const { jpegUrl, tiffPath } = await saveImages(buffer, "image");
+                    console.log("Base64 image saved:", jpegUrl);
+                    
+                    return {
+                      imageUrl: jpegUrl,
+                      filePath: tiffPath, // Return TIFF path for high-quality printing
+                    };
+                  }
                 } catch (b64Error) {
                   console.error("Error processing base64 image:", b64Error);
                 }
