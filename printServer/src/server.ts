@@ -89,17 +89,12 @@ app.get('/printers', authenticate, async (_req: Request, res: Response) => {
 
 // Canon Pro 1000 specific printer options
 const canonProOptions: Record<string, string> = {
-  "media": "A3", // A3 size
-  "PageSize": "A3", 
-  "MediaType": "PhotoPaperPro", // Pro luster/semi-gloss paper
-  "InputSlot": "Rear",  // Rear tray for specialty papers
-  "Quality": "best",    // Highest quality
-  "ColorModel": "RGB",  // Full color
-  "Resolution": "max",  // Maximum resolution
-  "Duplex": "None",     // No duplex printing for photos
-  // Try removing some options to simplify the request
-  // "fit-to-page": "true",
-  // "print-quality": "high",
+  "PageSize": "A3", // Exactly as shown in lpoptions output
+  "InputSlot": "ByPassTray", // Rear tray based on lpoptions
+  "MediaType": "Photographic", // Exactly as shown in lpoptions
+  "ColorModel": "RGB", // Exactly as shown in lpoptions
+  "cupsPrintQuality": "High", // Exactly as shown in lpoptions
+  "Duplex": "None" // No duplex printing for photos
 };
 
 // Default printer options
@@ -323,6 +318,60 @@ app.post('/print-upload', authenticate, upload.single('image'), async (req: Mult
 // Add simple test endpoint
 app.get('/test', (_req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'Test endpoint working!' });
+});
+
+// Add printer details endpoint
+app.get('/printer-details', authenticate, async (_req: Request, res: Response) => {
+  try {
+    // Get printers
+    const printers = await getPrinterNames();
+    console.log("Available printers:", printers);
+    
+    if (printers.length === 0) {
+      return res.status(500).json({ error: 'No printers found' });
+    }
+
+    // Find Canon printer
+    let selectedPrinter = printers.find(printer => 
+      printer.toLowerCase().includes('canon') || 
+      printer.toLowerCase().includes('pro-1000')
+    );
+    
+    if (!selectedPrinter) {
+      selectedPrinter = printers[0];
+    }
+    
+    console.log(`Selected printer for details: ${selectedPrinter}`);
+    
+    // Get printer options using exec
+    const { exec } = require('child_process');
+    const printerDetailsPromise = new Promise((resolve, reject) => {
+      exec(`lpoptions -p ${selectedPrinter} -l`, (error: any, stdout: string, stderr: string) => {
+        if (error) {
+          console.error(`Error getting printer details: ${error.message}`);
+          return reject(error);
+        }
+        if (stderr) {
+          console.error(`stderr: ${stderr}`);
+          return reject(new Error(stderr));
+        }
+        resolve(stdout);
+      });
+    });
+    
+    const printerDetails = await printerDetailsPromise;
+    
+    // Return the printer details
+    res.json({ 
+      success: true, 
+      printer: selectedPrinter,
+      details: printerDetails
+    });
+  } catch (error) {
+    console.error('Error getting printer details:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `Failed to get printer details: ${errorMessage}` });
+  }
 });
 
 // Add debug printing endpoint with minimal options

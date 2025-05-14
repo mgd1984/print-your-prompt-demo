@@ -140,17 +140,13 @@ export const printerRouter = createTRPCRouter({
           
           // Canon Pro 1000 specific printer options
           const canonProOptions = {
-            "media": "A3", // Change from Custom.13x19in to A3
-            "PageSize": "A3", // Change from Custom.13x19in to A3
-            "MediaType": "CanonPhotoProPlat", // Canon-specific media type
-            "InputSlot": "RearTray", // Exact name as used by CUPS
-            "print-quality": "5", // Numeric value for high quality
-            "ColorModel": "RGB", // Full color
-            "Resolution": "600x600dpi", // Specific resolution
+            "PageSize": "A3", // Exactly as shown in lpoptions output
+            "InputSlot": "ByPassTray", // Rear tray based on lpoptions
+            "MediaType": "Photographic", // Exactly as shown in lpoptions
+            "ColorModel": "RGB", // Exactly as shown in lpoptions
+            "cupsPrintQuality": "High", // Exactly as shown in lpoptions
             "Duplex": "None", // No duplex printing for photos
-            "print-color-mode": "color",
-            "orientation-requested": "3", // landscape (90 degrees)
-            "fit-to-page": "true"
+            "print-color-mode": "color" // Keep this setting
           };
           
           // Default printer options for other printers
@@ -168,7 +164,7 @@ export const printerRouter = createTRPCRouter({
           // Connection options - support both network and direct USB
           const connectionOptions: any = {
             printer: selectedPrinter,
-            options: printerOptions
+            printerOptions: printerOptions
           };
 
           // Add authentication only if environment variables are present
