@@ -26,6 +26,51 @@ export const printerRouter = createTRPCRouter({
         
         // If running locally (development), use direct printing via node-cups
         if (isLocalEnvironment()) {
+          // Check if this is a base64 data URL
+          if (input.imageUrl.startsWith('data:image/')) {
+            console.log("Base64 image detected, converting to file for local printing");
+            const tempDir = path.join(process.cwd(), "public", "uploads");
+            
+            // Ensure the directory exists
+            if (!fs.existsSync(tempDir)) {
+              fs.mkdirSync(tempDir, { recursive: true });
+            }
+            
+            // Extract base64 data
+            const matches = input.imageUrl.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+              throw new Error("Invalid base64 image format");
+            }
+            
+            const format = matches[1] as string;
+            const base64Data = matches[2] as string;
+            const buffer = Buffer.from(base64Data, 'base64');
+            
+            // Create temporary file
+            const timestamp = Date.now();
+            const tempFilePath = path.join(tempDir, `temp-image-${timestamp}.${format}`);
+            fs.writeFileSync(tempFilePath, buffer);
+            
+            // Use this temporary file for printing
+            input.imageUrl = `/uploads/temp-image-${timestamp}.${format}`;
+            console.log("Converted base64 to temporary file:", input.imageUrl);
+            
+            // Clean up function to remove temp file after printing
+            const cleanupTempFile = () => {
+              try {
+                if (fs.existsSync(tempFilePath)) {
+                  fs.unlinkSync(tempFilePath);
+                  console.log("Temporary file removed:", tempFilePath);
+                }
+              } catch (e) {
+                console.error("Error removing temporary file:", e);
+              }
+            };
+            
+            // Schedule cleanup after 5 seconds
+            setTimeout(cleanupTempFile, 5000);
+          }
+          
           // If this is a JPEG URL from the web UI, try to find the corresponding TIFF file
           let imagePath;
           
@@ -159,19 +204,23 @@ export const printerRouter = createTRPCRouter({
         } 
         // If running in production (Vercel), use the remote print server
         else {
-          // Make the image URL absolute if it's a relative URL
-          let fullImageUrl = input.imageUrl;
-          if (input.imageUrl.startsWith('/')) {
+          // Make the image URL absolute if it's a relative URL and not a base64 data URL
+          let imageData = input.imageUrl;
+          
+          // If it's a base64 data URL, pass it directly
+          const isBase64 = input.imageUrl.startsWith('data:image/');
+          
+          if (!isBase64 && input.imageUrl.startsWith('/')) {
             // If deploying to Vercel, use the VERCEL_URL environment variable
             const baseUrl = process.env.VERCEL_URL 
               ? `https://${process.env.VERCEL_URL}` 
               : process.env.NEXT_PUBLIC_BASE_URL || '';
             
-            fullImageUrl = `${baseUrl}${input.imageUrl}`;
+            imageData = `${baseUrl}${input.imageUrl}`;
           }
           
           console.log("Using print server at:", PRINT_SERVER_URL);
-          console.log("Sending image URL to print server:", fullImageUrl);
+          console.log("Sending image to print server:", isBase64 ? "(base64 data)" : imageData);
           
           // Send the request to the print server
           const response = await fetch(`${PRINT_SERVER_URL}/print-url`, {
@@ -184,8 +233,9 @@ export const printerRouter = createTRPCRouter({
               })
             },
             body: JSON.stringify({
-              imageUrl: fullImageUrl,
-              useHighQuality: input.useHighQuality
+              imageUrl: imageData,
+              useHighQuality: input.useHighQuality,
+              isBase64: isBase64
             })
           });
           

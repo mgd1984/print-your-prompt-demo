@@ -22,43 +22,64 @@ function sanitizePrompt(prompt: string): string {
   return `Create a safe, appropriate image of: ${sanitized}`;
 }
 
-// Function to save image as JPEG and TIFF
+// Function to save image as JPEG and TIFF (checks for Vercel environment)
 async function saveImages(buffer: Buffer, basename: string): Promise<{ jpegUrl: string, tiffPath: string }> {
-  // Create directory if it doesn't exist
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-  
-  // Generate filenames with timestamp
   const timestamp = Date.now();
   const jpegFilename = `${basename}-${timestamp}.jpg`;
   const tiffFilename = `${basename}-${timestamp}.tiff`;
-  const jpegPath = path.join(uploadDir, jpegFilename);
-  const tiffPath = path.join(uploadDir, tiffFilename);
   
-  // Convert to high-quality JPEG for web display
-  await sharp(buffer)
-    .jpeg({ quality: 90, mozjpeg: true })
-    .toFile(jpegPath);
+  // Check if we're in Vercel production environment
+  const isVercel = process.env.VERCEL === '1';
   
-  // Convert to TIFF for high-quality printing
-  await sharp(buffer)
-    .tiff({
-      quality: 100,
-      compression: 'lzw',
-      predictor: 'horizontal'
-    })
-    .toFile(tiffPath);
-  
-  // Return the JPEG URL for web display and TIFF path for printing
-  const jpegUrl = `/uploads/${jpegFilename}`;
-  console.log("Generated image file path:", jpegUrl);
-  
-  return {
-    jpegUrl,
-    tiffPath: tiffPath
-  };
+  if (!isVercel) {
+    // Local development: Save to filesystem
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    const jpegPath = path.join(uploadDir, jpegFilename);
+    const tiffPath = path.join(uploadDir, tiffFilename);
+    
+    // Convert to high-quality JPEG for web display
+    await sharp(buffer)
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toFile(jpegPath);
+    
+    // Convert to TIFF for high-quality printing
+    await sharp(buffer)
+      .tiff({
+        quality: 100,
+        compression: 'lzw',
+        predictor: 'horizontal'
+      })
+      .toFile(tiffPath);
+    
+    const jpegUrl = `/uploads/${jpegFilename}`;
+    console.log("Generated image file path:", jpegUrl);
+    
+    return {
+      jpegUrl,
+      tiffPath: tiffPath
+    };
+  } else {
+    // In Vercel: Return the original URL for now
+    // In a production app, you would integrate with a service like S3, Cloudinary, etc.
+    console.log("Running in Vercel environment - skipping local file writes");
+    
+    // For now, we'll base64 encode the image and return it directly
+    // This is a temporary solution - in production, use a proper storage service
+    const jpegBuffer = await sharp(buffer)
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toBuffer();
+    
+    const base64Image = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
+    
+    return {
+      jpegUrl: base64Image,
+      tiffPath: '' // Empty in Vercel environment
+    };
+  }
 }
 
 export const imageRouter = createTRPCRouter({
@@ -82,7 +103,7 @@ export const imageRouter = createTRPCRouter({
             model: "gpt-image-1",
             prompt: safePrompt,
             n: 1,
-            size: "1024x1536",
+            size: "1024x1024", // Use supported size
             quality: "auto",
           });
           
@@ -109,7 +130,7 @@ export const imageRouter = createTRPCRouter({
                   
                   // Save as JPEG and TIFF
                   const { jpegUrl, tiffPath } = await saveImages(buffer, "image");
-                  console.log("Base64 image saved locally:", jpegUrl);
+                  console.log("Base64 image saved:", jpegUrl);
                   
                   return {
                     imageUrl: jpegUrl,
@@ -133,7 +154,7 @@ export const imageRouter = createTRPCRouter({
             model: "dall-e-3",
             prompt: safePrompt,
             n: 1,
-            size: "1024x1536",
+            size: "1024x1024", // Use supported size
             response_format: "url",
           });
           
