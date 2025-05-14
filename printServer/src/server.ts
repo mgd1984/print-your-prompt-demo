@@ -89,7 +89,6 @@ app.get('/printers', authenticate, async (_req: Request, res: Response) => {
 
 // Canon Pro 1000 specific printer options
 const canonProOptions: Record<string, string> = {
-  "media": "a3",
   "PageSize": "A3", // Exactly as shown in lpoptions output
   "InputSlot": "Top", // Main tray
   "MediaType": "Photographic", // Exactly as shown in lpoptions
@@ -100,7 +99,7 @@ const canonProOptions: Record<string, string> = {
 
 // Default printer options
 const defaultOptions: Record<string, string> = {
-  "media": "a3",
+  "PageSize": "A3",
   "fit-to-page": "true",
   "print-quality": "high",
 };
