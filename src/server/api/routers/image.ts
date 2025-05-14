@@ -63,20 +63,13 @@ async function saveImages(buffer: Buffer, basename: string): Promise<{ jpegUrl: 
       tiffPath: tiffPath
     };
   } else {
-    // In Vercel: Return the original URL for now
-    // In a production app, you would integrate with a service like S3, Cloudinary, etc.
-    console.log("Running in Vercel environment - skipping local file writes");
+    // In Vercel: We will NOT convert to base64 anymore - too large for ngrok
+    // Instead, we'll use image URLs directly from OpenAI
+    console.log("Running in Vercel environment - not using base64 encoding");
     
-    // For now, we'll base64 encode the image and return it directly
-    // This is a temporary solution - in production, use a proper storage service
-    const jpegBuffer = await sharp(buffer)
-      .jpeg({ quality: 90, mozjpeg: true })
-      .toBuffer();
-    
-    const base64Image = `data:image/jpeg;base64,${jpegBuffer.toString('base64')}`;
-    
+    // Return empty path for TIFF as it's not available in Vercel
     return {
-      jpegUrl: base64Image,
+      jpegUrl: "placeholder-will-use-direct-openai-url",
       tiffPath: '' // Empty in Vercel environment
     };
   }
@@ -186,16 +179,29 @@ export const imageRouter = createTRPCRouter({
             });
           }
           
-          const buffer = Buffer.from(await imageResponse.arrayBuffer());
+          // Check if we're in Vercel environment
+          const isVercel = process.env.VERCEL === '1';
           
-          // Save as JPEG and TIFF formats
-          const { jpegUrl, tiffPath } = await saveImages(buffer, "image");
-          console.log("Image saved locally as JPEG and TIFF:", jpegUrl);
-          
-          return {
-            imageUrl: jpegUrl,
-            filePath: tiffPath, // Return TIFF path for high-quality printing
-          };
+          if (isVercel) {
+            // In Vercel: Use the OpenAI URL directly to avoid payload size issues
+            console.log("Using OpenAI image URL directly in Vercel environment");
+            return {
+              imageUrl: imageUrl, // Use the OpenAI URL directly
+              filePath: ''        // No local file path in Vercel
+            };
+          } else {
+            // Local development: Save to filesystem as before
+            const buffer = Buffer.from(await imageResponse.arrayBuffer());
+            
+            // Save as JPEG and TIFF formats
+            const { jpegUrl, tiffPath } = await saveImages(buffer, "image");
+            console.log("Image saved locally as JPEG and TIFF:", jpegUrl);
+            
+            return {
+              imageUrl: jpegUrl,
+              filePath: tiffPath, // Return TIFF path for high-quality printing
+            };
+          }
         } catch (fetchError) {
           console.error("Error fetching or saving image:", fetchError);
           throw new TRPCError({

@@ -204,13 +204,11 @@ export const printerRouter = createTRPCRouter({
         } 
         // If running in production (Vercel), use the remote print server
         else {
-          // Make the image URL absolute if it's a relative URL and not a base64 data URL
+          // Make the image URL absolute if it's a relative URL
           let imageData = input.imageUrl;
           
-          // If it's a base64 data URL, pass it directly
-          const isBase64 = input.imageUrl.startsWith('data:image/');
-          
-          if (!isBase64 && input.imageUrl.startsWith('/')) {
+          // Skip base64 handling as we're now using direct URLs
+          if (input.imageUrl.startsWith('/')) {
             // If deploying to Vercel, use the VERCEL_URL environment variable
             const baseUrl = process.env.VERCEL_URL 
               ? `https://${process.env.VERCEL_URL}` 
@@ -220,7 +218,7 @@ export const printerRouter = createTRPCRouter({
           }
           
           console.log("Using print server at:", PRINT_SERVER_URL);
-          console.log("Sending image to print server:", isBase64 ? "(base64 data)" : imageData);
+          console.log("Sending image URL to print server:", imageData);
           
           // Send the request to the print server
           const response = await fetch(`${PRINT_SERVER_URL}/print-url`, {
@@ -234,8 +232,7 @@ export const printerRouter = createTRPCRouter({
             },
             body: JSON.stringify({
               imageUrl: imageData,
-              useHighQuality: input.useHighQuality,
-              isBase64: isBase64
+              useHighQuality: input.useHighQuality
             })
           });
           
