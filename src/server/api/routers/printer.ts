@@ -140,6 +140,7 @@ export const printerRouter = createTRPCRouter({
           
           // Canon Pro 1000 specific printer options
           const canonProOptions = {
+            "media": "a3",
             "PageSize": "A3", // Exactly as shown in lpoptions output
             "InputSlot": "Top", // Main tray
             "MediaType": "Photographic", // Exactly as shown in lpoptions
