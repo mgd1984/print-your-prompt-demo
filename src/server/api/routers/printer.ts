@@ -151,7 +151,7 @@ export const printerRouter = createTRPCRouter({
           
           // Default printer options for other printers
           const defaultOptions = {
-            "PageSize": "A3",
+            "PageSize": "Custom.11.7x16.5",
             "fit-to-page": "true",
             "print-quality": "high",
           };

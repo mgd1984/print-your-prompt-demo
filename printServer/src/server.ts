@@ -99,7 +99,7 @@ const canonProOptions: Record<string, string> = {
 
 // Default printer options
 const defaultOptions: Record<string, string> = {
-  "PageSize": "A3",
+  "PageSize": "Custom.11.7x16.5",
   "fit-to-page": "true",
   "print-quality": "high",
 };
