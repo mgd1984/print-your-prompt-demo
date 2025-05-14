@@ -1,0 +1,238 @@
+import { z } from "zod";
+import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import { printFile, getPrinterNames } from "node-cups";
+import path from "path";
+import fs from "fs";
+import { env } from "@/env";
+
+// Create a function to determine if we're in local development or production (Vercel)
+const isLocalEnvironment = () => {
+  return process.env.NODE_ENV === 'development' || !process.env.VERCEL;
+};
+
+// Get the print server URL from environment or use default
+const PRINT_SERVER_URL = process.env.PRINT_SERVER_URL || 'http://localhost:3001';
+
+export const printerRouter = createTRPCRouter({
+  print: publicProcedure
+    .input(z.object({ 
+      imageUrl: z.string(),
+      useHighQuality: z.boolean().optional().default(true)
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        console.log("Print request received:", input);
+        console.log("Environment:", process.env.NODE_ENV, "isLocalEnvironment:", isLocalEnvironment());
+        
+        // If running locally (development), use direct printing via node-cups
+        if (isLocalEnvironment()) {
+          // If this is a JPEG URL from the web UI, try to find the corresponding TIFF file
+          let imagePath;
+          
+          if (input.useHighQuality && input.imageUrl.endsWith('.jpg')) {
+            // Convert /uploads/image-1234567890.jpg to /uploads/image-1234567890.tiff
+            const tiffPath = input.imageUrl.replace('.jpg', '.tiff');
+            const absoluteTiffPath = path.join(process.cwd(), "public", tiffPath.startsWith('/') ? tiffPath.slice(1) : tiffPath);
+            
+            console.log("Looking for TIFF file at:", absoluteTiffPath);
+            
+            // Check if TIFF exists
+            if (fs.existsSync(absoluteTiffPath)) {
+              imagePath = absoluteTiffPath;
+              console.log("Using high-quality TIFF file for printing:", imagePath);
+            } else {
+              console.log("TIFF file not found, falling back to JPEG");
+            }
+          }
+          
+          // Fallback to original image if TIFF not found
+          if (!imagePath) {
+            // Remove leading slash if present
+            const relativePath = input.imageUrl.startsWith("/") 
+              ? input.imageUrl.slice(1) 
+              : input.imageUrl;
+            
+            // Construct the absolute path to the image
+            imagePath = path.join(process.cwd(), "public", relativePath);
+            console.log("Using original image file for printing:", imagePath);
+            
+            // Check if this file exists
+            if (!fs.existsSync(imagePath)) {
+              console.error("ERROR: Image file does not exist at path:", imagePath);
+              throw new Error(`Image file not found: ${imagePath}`);
+            }
+          }
+          
+          // Get available printers
+          console.log("Getting available printers...");
+          const printers = await getPrinterNames();
+          console.log("Available printers:", printers);
+          
+          if (printers.length === 0) {
+            throw new Error("No printers found");
+          }
+          
+          // First try to find the Series 2 printer specifically
+          let selectedPrinter = printers.find(printer => 
+            printer.includes("Canon_PRO_1000_series_2") || 
+            printer.includes("PRO-1000 series 2")
+          );
+          
+          // Fall back to any Canon printer if the preferred one isn't found
+          if (!selectedPrinter) {
+            selectedPrinter = printers.find(printer => 
+              printer.toLowerCase().includes("canon") || 
+              printer.toLowerCase().includes("pro-1000")
+            );
+          }
+          
+          // Use the first available printer as last resort
+          if (!selectedPrinter) {
+            selectedPrinter = printers[0];
+          }
+          
+          console.log(`Using printer: ${selectedPrinter}`);
+          
+          // Canon Pro 1000 specific printer options
+          const canonProOptions = {
+            "media": "Custom.13x19in", // Match the exact CUPS media name format
+            "PageSize": "Custom.13x19in", 
+            "MediaType": "CanonPhotoProPlat", // Canon-specific media type
+            "InputSlot": "RearTray", // Exact name as used by CUPS
+            "print-quality": "5", // Numeric value for high quality
+            "ColorModel": "RGB", // Full color
+            "Resolution": "600x600dpi", // Specific resolution
+            "Duplex": "None", // No duplex printing for photos
+            "print-color-mode": "color",
+            "orientation-requested": "3", // landscape (90 degrees)
+            "fit-to-page": "true"
+          };
+          
+          // Default printer options for other printers
+          const defaultOptions = {
+            "media": "a4",
+            "fit-to-page": "true",
+            "print-quality": "high",
+          };
+          
+          // Build CUPS-compatible options array
+          const printerOptions = selectedPrinter && selectedPrinter.toLowerCase().includes("canon") 
+            ? canonProOptions 
+            : defaultOptions;
+            
+          // Connection options - support both network and direct USB
+          const connectionOptions: any = {
+            printer: selectedPrinter,
+            options: printerOptions
+          };
+
+          // Add authentication only if environment variables are present
+          if (process.env.CUPS_USER && process.env.CUPS_PASSWORD) {
+            connectionOptions.user = process.env.CUPS_USER;
+            connectionOptions.password = process.env.CUPS_PASSWORD;
+          }
+          
+          // For debugging, output the exact CLI command that would be used
+          console.log("Final print options:", connectionOptions);
+          
+          // For debugging - log the actual command that would be executed
+          const cupsArgs = Object.entries(printerOptions)
+            .map(([key, value]) => `-o ${key}=${value}`)
+            .join(' ');
+          console.log(`CUPS equivalent: lpr -P "${selectedPrinter}" ${cupsArgs} "${imagePath}"`);
+          
+          // Print the image
+          try {
+            const result = await printFile(imagePath, connectionOptions);
+            console.log("Print job submitted successfully:", result);
+            
+            return { 
+              success: true, 
+              printer: selectedPrinter,
+              jobId: result.requestId,
+              highQuality: imagePath.endsWith('.tiff')
+            };
+          } catch (printError) {
+            console.error("Error in printFile:", printError);
+            throw printError;
+          }
+        } 
+        // If running in production (Vercel), use the remote print server
+        else {
+          // Make the image URL absolute if it's a relative URL
+          let fullImageUrl = input.imageUrl;
+          if (input.imageUrl.startsWith('/')) {
+            // If deploying to Vercel, use the VERCEL_URL environment variable
+            const baseUrl = process.env.VERCEL_URL 
+              ? `https://${process.env.VERCEL_URL}` 
+              : process.env.NEXT_PUBLIC_BASE_URL || '';
+            
+            fullImageUrl = `${baseUrl}${input.imageUrl}`;
+          }
+          
+          console.log("Using print server at:", PRINT_SERVER_URL);
+          console.log("Sending image URL to print server:", fullImageUrl);
+          
+          // Send the request to the print server
+          const response = await fetch(`${PRINT_SERVER_URL}/print-url`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // Add optional auth token if provided
+              ...(process.env.PRINT_SERVER_TOKEN && {
+                'Authorization': `Bearer ${process.env.PRINT_SERVER_TOKEN}`
+              })
+            },
+            body: JSON.stringify({
+              imageUrl: fullImageUrl,
+              useHighQuality: input.useHighQuality
+            })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.error("Print server error:", response.status, errorData);
+            throw new Error(errorData.error || `Print server error: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          console.log("Print server response:", result);
+          return result;
+        }
+      } catch (error) {
+        console.error("Error printing image:", error);
+        throw new Error(`Failed to print image: ${(error as Error).message}`);
+      }
+    }),
+    
+  getPrinters: publicProcedure
+    .query(async () => {
+      try {
+        // If running locally, use direct access to printers
+        if (isLocalEnvironment()) {
+          const printers = await getPrinterNames();
+          return { printers };
+        } 
+        // Otherwise, query the print server
+        else {
+          const response = await fetch(`${PRINT_SERVER_URL}/printers`, {
+            headers: {
+              // Add optional auth token if provided
+              ...(process.env.PRINT_SERVER_TOKEN && {
+                'Authorization': `Bearer ${process.env.PRINT_SERVER_TOKEN}`
+              })
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Print server error: ${response.status}`);
+          }
+          
+          return await response.json();
+        }
+      } catch (error) {
+        console.error("Error getting printers:", error);
+        throw new Error(`Failed to get printers: ${(error as Error).message}`);
+      }
+    }),
+}); 
