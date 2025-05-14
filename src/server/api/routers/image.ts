@@ -67,9 +67,10 @@ async function saveImages(buffer: Buffer, basename: string): Promise<{ jpegUrl: 
     // Instead, we'll use image URLs directly from OpenAI
     console.log("Running in Vercel environment - not using base64 encoding");
     
-    // Return empty path for TIFF as it's not available in Vercel
+    // Return empty strings as this function's result won't be used in Vercel
+    // The actual OpenAI URL will be used directly
     return {
-      jpegUrl: "placeholder-will-use-direct-openai-url",
+      jpegUrl: '',
       tiffPath: '' // Empty in Vercel environment
     };
   }
