@@ -97,8 +97,9 @@ const canonProOptions: Record<string, string> = {
   "ColorModel": "RGB",  // Full color
   "Resolution": "max",  // Maximum resolution
   "Duplex": "None",     // No duplex printing for photos
-  "fit-to-page": "true",
-  "print-quality": "high",
+  // Try removing some options to simplify the request
+  // "fit-to-page": "true",
+  // "print-quality": "high",
 };
 
 // Default printer options
@@ -118,8 +119,10 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
     }
     
     console.log(`Received print request for image: ${imageUrl}`);
+    console.log(`High quality print requested: ${useHighQuality}`);
     
     // Fetch the image
+    console.log("Fetching image from URL...");
     const response = await fetch(imageUrl);
     if (!response.ok) {
       return res.status(400).json({ 
@@ -127,7 +130,9 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
       });
     }
     
+    console.log("Image fetched successfully, processing...");
     const buffer = Buffer.from(await response.arrayBuffer());
+    console.log(`Image size: ${buffer.length} bytes`);
     
     // Save as both JPEG and TIFF
     const uploadDir = path.join(__dirname, '..', 'uploads');
@@ -142,10 +147,12 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
     const tiffPath = path.join(uploadDir, tiffFilename);
     
     // Convert to formats
+    console.log("Converting to JPEG format...");
     await sharp(buffer)
       .jpeg({ quality: 90, mozjpeg: true })
       .toFile(jpegPath);
     
+    console.log("Converting to TIFF format...");
     await sharp(buffer)
       .tiff({
         quality: 100,
@@ -154,8 +161,12 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
       })
       .toFile(tiffPath);
     
+    console.log("Image conversions complete");
+    
     // Get printers
+    console.log("Getting available printers...");
     const printers = await getPrinterNames();
+    console.log("Available printers:", printers);
     
     if (printers.length === 0) {
       return res.status(500).json({ error: 'No printers found' });
@@ -201,17 +212,36 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
     
     // Use TIFF or JPEG based on preference
     const filePath = useHighQuality ? tiffPath : jpegPath;
+    console.log(`Using ${useHighQuality ? 'TIFF' : 'JPEG'} for printing: ${filePath}`);
+    
+    // Verify file exists before printing
+    if (!fs.existsSync(filePath)) {
+      console.error(`ERROR: File does not exist at path: ${filePath}`);
+      return res.status(500).json({ error: 'Generated image file not found' });
+    }
+    
+    console.log("File verified. Sending print job with options:", connectionOptions);
     
     // Print the file
-    const result = await printFile(filePath, connectionOptions);
-    console.log(`Print job submitted: ${result.requestId}`);
-    
-    res.json({ 
-      success: true, 
-      printer: selectedPrinter,
-      jobId: result.requestId,
-      highQuality: useHighQuality
-    });
+    try {
+      const result = await printFile(filePath, connectionOptions);
+      console.log(`Print job submitted: ${result.requestId}`);
+      
+      // Try to get more info about the job status
+      console.log(`To check status, try: lpstat -l -j ${result.requestId}`);
+      
+      res.json({ 
+        success: true, 
+        printer: selectedPrinter,
+        jobId: result.requestId,
+        highQuality: useHighQuality,
+        filePath: filePath // Include file path for debugging
+      });
+    } catch (printError) {
+      console.error("Error in print operation:", printError);
+      const errorMessage = printError instanceof Error ? printError.message : 'Unknown print error';
+      return res.status(500).json({ error: `Print operation failed: ${errorMessage}` });
+    }
   } catch (error) {
     console.error('Error printing image:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -287,6 +317,82 @@ app.post('/print-upload', authenticate, upload.single('image'), async (req: Mult
     console.error('Error printing uploaded image:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: `Failed to print image: ${errorMessage}` });
+  }
+});
+
+// Add simple test endpoint
+app.get('/test', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', message: 'Test endpoint working!' });
+});
+
+// Add debug printing endpoint with minimal options
+app.get('/debug-print', authenticate, async (_req: Request, res: Response) => {
+  try {
+    // Get printers
+    const printers = await getPrinterNames();
+    console.log("Available printers:", printers);
+    
+    if (printers.length === 0) {
+      return res.status(500).json({ error: 'No printers found' });
+    }
+
+    // Find Canon printer
+    let selectedPrinter = printers.find(printer => 
+      printer.toLowerCase().includes('canon') || 
+      printer.toLowerCase().includes('pro-1000')
+    );
+    
+    if (!selectedPrinter) {
+      selectedPrinter = printers[0];
+    }
+    
+    console.log(`Selected printer for debugging: ${selectedPrinter}`);
+    
+    // Use a test image in the uploads directory
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    // Create a simple test image
+    const testImagePath = path.join(uploadDir, 'test-image.jpg');
+    await sharp({
+      create: {
+        width: 1000,
+        height: 1000,
+        channels: 3,
+        background: { r: 255, g: 200, b: 200 }
+      }
+    })
+    .jpeg()
+    .toFile(testImagePath);
+    
+    console.log(`Created test image at: ${testImagePath}`);
+    
+    // Use minimal print options
+    const minimalPrintOptions: PrintParams = {
+      printer: selectedPrinter,
+      printerOptions: {
+        "media": "Letter",
+      }
+    };
+    
+    console.log("Sending minimal print job with options:", minimalPrintOptions);
+    
+    // Print the file with minimal options
+    const result = await printFile(testImagePath, minimalPrintOptions);
+    console.log(`Debug print job submitted: ${result.requestId}`);
+    
+    res.json({ 
+      success: true, 
+      printer: selectedPrinter,
+      jobId: result.requestId,
+      message: "Debug print job sent with minimal options"
+    });
+  } catch (error) {
+    console.error('Error in debug printing:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `Failed to print debug image: ${errorMessage}` });
   }
 });
 
