@@ -140,8 +140,8 @@ export const printerRouter = createTRPCRouter({
           
           // Canon Pro 1000 specific printer options
           const canonProOptions = {
-            "PageSize": "A3", // Custom size for Epson Premium Presentation Paper (11.7" x 16.5")
-            "InputSlot": "Top", // Main tray
+            "media": "A3", // Custom size for Epson Premium Presentation Paper (11.7" x 16.5")
+            "InputSlot": "Rear", // Main tray
             "MediaType": "Stationery", // Use Stationery for matte presentation paper
             "ColorModel": "RGB", // Full color
             "cupsPrintQuality": "High", // High quality for presentation paper
@@ -151,7 +151,7 @@ export const printerRouter = createTRPCRouter({
           
           // Default printer options for other printers
           const defaultOptions = {
-            "PageSize": "A3",
+            "media": "A3",
             "fit-to-page": "true",
             "print-quality": "high",
           };
