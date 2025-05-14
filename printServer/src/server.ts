@@ -89,8 +89,8 @@ app.get('/printers', authenticate, async (_req: Request, res: Response) => {
 
 // Canon Pro 1000 specific printer options
 const canonProOptions: Record<string, string> = {
-  "media": "custom_13x19", // 13x19 inches (Super B/A3+)
-  "PageSize": "13x19", 
+  "media": "A3", // A3 size
+  "PageSize": "A3", 
   "MediaType": "PhotoPaperPro", // Pro luster/semi-gloss paper
   "InputSlot": "Rear",  // Rear tray for specialty papers
   "Quality": "best",    // Highest quality

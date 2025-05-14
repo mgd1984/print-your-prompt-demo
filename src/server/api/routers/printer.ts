@@ -140,8 +140,8 @@ export const printerRouter = createTRPCRouter({
           
           // Canon Pro 1000 specific printer options
           const canonProOptions = {
-            "media": "Custom.13x19in", // Match the exact CUPS media name format
-            "PageSize": "Custom.13x19in", 
+            "media": "A3", // Change from Custom.13x19in to A3
+            "PageSize": "A3", // Change from Custom.13x19in to A3
             "MediaType": "CanonPhotoProPlat", // Canon-specific media type
             "InputSlot": "RearTray", // Exact name as used by CUPS
             "print-quality": "5", // Numeric value for high quality
