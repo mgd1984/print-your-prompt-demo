@@ -89,17 +89,19 @@ app.get('/printers', authenticate, async (_req: Request, res: Response) => {
 
 // Canon Pro 1000 specific printer options
 const canonProOptions: Record<string, string> = {
-  "media": "A3", // Custom size for Epson Premium Presentation Paper (11.7" x 16.5")
-  "InputSlot": "Rear", // Main tray
-  "MediaType": "Stationery", // Use Stationery for matte presentation paper
-  "ColorModel": "RGB", // Full color
-  "cupsPrintQuality": "High", // High quality for presentation paper
-  "Duplex": "None" // No duplex printing for photos
+  "PageSize": "A3", // Use A3 (11.69" x 16.54") as it's very close to 11.7" x 16.5"
+  "PageRegion": "A3", // Ensure region also matches
+  "InputSlot": "ByPassTray", // Use bypass tray for specialty paper
+  "MediaType": "Photographic", // Epson presentation paper is better treated as photo paper
+  "ColorModel": "RGB", // Standard RGB color mode
+  "cupsPrintQuality": "High", // High quality
+  "Duplex": "None", // No duplex for photos
+  "fit-to-page": "true" // Enable fit to page to handle small size differences
 };
 
 // Default printer options
 const defaultOptions: Record<string, string> = {
-  "media": "A3",
+  "PageSize": "A3",
   "fit-to-page": "true",
   "print-quality": "high",
 };
