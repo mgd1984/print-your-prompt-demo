@@ -2,7 +2,14 @@
 // https://orm.drizzle.team/docs/sql-schema-declaration
 
 import { sql } from "drizzle-orm";
-import { index, sqliteTableCreator } from "drizzle-orm/sqlite-core";
+import { 
+  pgTable, 
+  serial, 
+  text, 
+  timestamp, 
+  boolean, 
+  index as pgIndex
+} from "drizzle-orm/pg-core";
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -10,53 +17,52 @@ import { index, sqliteTableCreator } from "drizzle-orm/sqlite-core";
  *
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
-export const createTable = sqliteTableCreator(
-  (name) => `print-your-prompt-demo_${name}`,
+// Create a table prefix helper to ensure consistent naming
+const getTableName = (name: string) => `print-your-prompt-demo_${name}`;
+
+// Define the prompts table with indexes
+export const prompts = pgTable(
+  getTableName("prompt"),
+  {
+    id: serial("id").primaryKey(),
+    text: text("text").notNull(),
+    username: text("username"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    status: text("status", { enum: ["pending", "selected", "completed"] }).default("pending").notNull(),
+    imageUrl: text("image_url"),
+  },
+  (table) => {
+    return {
+      createdAtIdx: pgIndex("prompt_created_at_idx").on(table.createdAt),
+    };
+  }
 );
 
-export const prompts = createTable(
-  "prompt",
-  (d) => ({
-    id: d.integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
-    text: d.text({ length: 500 }).notNull(),
-    username: d.text({ length: 50 }),
-    createdAt: d
-      .integer({ mode: "timestamp" })
-      .default(sql`(unixepoch())`)
-      .notNull(),
-    status: d.text({ enum: ["pending", "selected", "completed"] }).default("pending").notNull(),
-    imageUrl: d.text({ length: 500 }),
-  }),
-  (t) => [index("prompt_created_at_idx").on(t.createdAt)],
+// Define the votes table with indexes
+export const votes = pgTable(
+  getTableName("vote"),
+  {
+    id: serial("id").primaryKey(),
+    promptId: serial("prompt_id").notNull(),
+    voter: text("voter").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      promptIdIdx: pgIndex("vote_prompt_id_idx").on(table.promptId),
+      voterIdx: pgIndex("vote_voter_idx").on(table.voter),
+      createdAtIdx: pgIndex("vote_created_at_idx").on(table.createdAt),
+    };
+  }
 );
 
-export const votes = createTable(
-  "vote",
-  (d) => ({
-    id: d.integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
-    promptId: d.integer({ mode: "number" }).notNull(),
-    voter: d.text({ length: 100 }).notNull(), // Cookie-based user ID
-    createdAt: d
-      .integer({ mode: "timestamp" })
-      .default(sql`(unixepoch())`)
-      .notNull(),
-  }),
-  (t) => [
-    index("vote_prompt_id_idx").on(t.promptId),
-    index("vote_voter_idx").on(t.voter),
-    index("vote_created_at_idx").on(t.createdAt),
-  ],
-);
-
-export const sessions = createTable(
-  "session",
-  (d) => ({
-    id: d.integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
-    startedAt: d
-      .integer({ mode: "timestamp" })
-      .default(sql`(unixepoch())`)
-      .notNull(),
-    endedAt: d.integer({ mode: "timestamp" }),
-    active: d.integer({ mode: "boolean" }).default(true).notNull(),
-  }),
+// Define the sessions table
+export const sessions = pgTable(
+  getTableName("session"),
+  {
+    id: serial("id").primaryKey(),
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    endedAt: timestamp("ended_at"),
+    active: boolean("active").default(true).notNull(),
+  }
 );
