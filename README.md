@@ -34,7 +34,7 @@ An interactive presentation tool for AI image generation lightning talks. Audien
 - **Framework**: [Next.js](https://nextjs.org) with the T3 Stack
 - **Styling**: [Tailwind CSS](https://tailwindcss.com)
 - **API**: [tRPC](https://trpc.io) for type-safe API calls
-- **Database**: SQLite with [Drizzle ORM](https://orm.drizzle.team)
+- **Database**: PostgreSQL with [Neon](https://neon.tech) and [Drizzle ORM](https://orm.drizzle.team)
 - **Image Generation**: OpenAI API
 - **Printing**: CUPS integration via node-cups
 

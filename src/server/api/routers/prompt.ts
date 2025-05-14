@@ -98,7 +98,7 @@ export const promptRouter = createTRPCRouter({
       
       // Query for prompts and their vote counts
       // Note: While proper SQL would use GROUP BY, we're using a workaround
-      // due to drizzle-orm limitations with SQLite and complex joins
+      // due to drizzle-orm limitations with complex joins
       const allPrompts = await ctx.db.query.prompts.findMany({
         where: gte(prompts.createdAt, timestamp),
         orderBy: [desc(prompts.createdAt)],
