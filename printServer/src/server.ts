@@ -89,7 +89,7 @@ app.get('/printers', authenticate, async (_req: Request, res: Response) => {
 
 // Canon Pro 1000 specific printer options
 const canonProOptions: Record<string, string> = {
-  "PageSize": "Custom.11.7x16.5", // Custom size for Epson Premium Presentation Paper (11.7" x 16.5")
+  "PageSize": "A3", // Custom size for Epson Premium Presentation Paper (11.7" x 16.5")
   "InputSlot": "Top", // Main tray
   "MediaType": "Stationery", // Use Stationery for matte presentation paper
   "ColorModel": "RGB", // Full color
@@ -99,7 +99,7 @@ const canonProOptions: Record<string, string> = {
 
 // Default printer options
 const defaultOptions: Record<string, string> = {
-  "PageSize": "Custom.11.7x16.5",
+  "PageSize": "A3",
   "fit-to-page": "true",
   "print-quality": "high",
 };
