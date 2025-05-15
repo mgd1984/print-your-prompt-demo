@@ -91,7 +91,7 @@ app.get('/printers', authenticate, async (_req: Request, res: Response) => {
 const canonProOptions: Record<string, string> = {
   "PageSize": "A3+", // Use A3 (11.69" x 16.54") as it's very close to 11.7" x 16.5"
   "PageRegion": "A3+", // Ensure region also matches
-  "InputSlot": "ByPassTray", // Use bypass tray for specialty paper
+  "InputSlot": "Top", // Use bypass tray for specialty paper
   "MediaType": "Photographic", // Epson presentation paper is better treated as photo paper
   "ColorModel": "RGB", // Standard RGB color mode
   "cupsPrintQuality": "High", // High quality
