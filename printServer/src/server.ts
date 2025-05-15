@@ -111,9 +111,11 @@ const canonProOptions: Record<string, string> = {
   // "Photographic" is too generic. Common Canon-specific types include:
   // "PhotoPaperProLuster", "PhotoPaperPlusGlossyII", "MattePhotoPaper",
   // "FineArtPhotoRag", etc.
+  // Using "auto" for MediaType, especially with a manual/bypass tray, is UNRELIABLE
+  // and can cause the printer to stall or report as "in use".
   // CRITICAL: Use `lpoptions -l` or the `/printer-details` endpoint to find the exact
-  // string for the paper you are using.
-  "MediaType": "auto", // Example: Changed from "Photographic". VERIFY THIS!
+  // string for the paper you are using. REPLACE THE VALUE BELOW.
+  "MediaType": "Photographic", // Example: Reverted from "auto". VERIFY THIS!
 
   "ColorModel": "RGB", // Standard RGB color mode
   "cupsPrintQuality": "High", // High quality printing
@@ -130,7 +132,8 @@ const defaultOptions: Record<string, string> = {
   "fit-to-page": "true", // Generally useful
   // "print-quality": "high", // cupsPrintQuality is preferred for more direct CUPS control
   "InputSlot": "Auto", // A common generic default for auto feed tray
-  "MediaType": "auto", // A generic photo media type
+  // Using "auto" for MediaType can be unreliable. Prefer a specific, common type if possible.
+  "MediaType": "Photographic", // A generic photo media type, reverted from "auto"
   "ColorModel": "RGB",
   "cupsPrintQuality": "Normal", // A more conservative default quality
 };
