@@ -140,8 +140,8 @@ export const printerRouter = createTRPCRouter({
           
           // Canon Pro 1000 specific printer options
           const canonProOptions = {
-            "PageSize": "13x19", // Use A3 (11.69" x 16.54") as it's very close to 11.7" x 16.5"
-            "PageRegion": "13x19", // Ensure region also matches
+            "PageSize": "A3+", // Use A3 (11.69" x 16.54") as it's very close to 11.7" x 16.5"
+            "PageRegion": "A3+", // Ensure region also matches
             "InputSlot": "ByPassTray", // Use bypass tray for specialty paper
             "MediaType": "Photographic", // Epson presentation paper is better treated as photo paper
             "ColorModel": "RGB", // Standard RGB color mode
@@ -151,7 +151,7 @@ export const printerRouter = createTRPCRouter({
           
           // Default printer options for other printers
           const defaultOptions = {
-            "PageSize": "13x19",
+            "PageSize": "A3+",
             "print-quality": "high",
           };
           
