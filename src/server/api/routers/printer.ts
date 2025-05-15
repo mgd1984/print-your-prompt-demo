@@ -152,6 +152,10 @@ export const printerRouter = createTRPCRouter({
           const defaultOptions = {
             "PageSize": "A3+",
             "print-quality": "high",
+            "InputSlot": "Top", // Use bypass tray for specialty paper
+            "MediaType": "Photographic", // Epson presentation paper is better treated as photo paper
+            "ColorModel": "RGB", // Standard RGB color mode
+            "cupsPrintQuality": "High", // High quality
           };
           
           // Build CUPS-compatible options array

@@ -89,21 +89,50 @@ app.get('/printers', authenticate, async (_req: Request, res: Response) => {
 
 // Canon Pro 1000 specific printer options
 const canonProOptions: Record<string, string> = {
-  "PageSize": "A3+", // Use A3 (11.69" x 16.54") as it's very close to 11.7" x 16.5"
-  "PageRegion": "A3+", // Ensure region also matches
-  "InputSlot": "Top", // Use bypass tray for specialty paper
-  "MediaType": "Photographic", // Epson presentation paper is better treated as photo paper
+  // PageSize: "A3+" is common, but some drivers prefer "A3plus", "SuperA3",
+  // or a specific dimension string (e.g., "SuperA3_329x483mm").
+  // Verify with `lpoptions -l -p YOUR_PRINTER_NAME`.
+  "PageSize": "A3plus",
+
+  // PageRegion should generally match PageSize.
+  "PageRegion": "A3plus",
+
+  // InputSlot: For A3+ photo/fine art paper on the Canon Pro-1000,
+  // the manual feed tray is typically used. Common CUPS names for this tray
+  // include "Manual", "Rear", "RearTray", "ManualFeed". "Top" refers to the
+  // main auto-feed tray, which might not be suitable for all A3+ media.
+  // CRITICAL: Verify the exact name for your manual feed tray using `lpoptions -l`.
+  "InputSlot": "by-pass-tray", // Changed from "Top" - common for A3+ specialty media
+
+  // MediaType: THIS IS THE MOST CRITICAL OPTION FOR "PAPER MISMATCH" ERRORS.
+  // The value must exactly match a media type supported by your printer driver
+  // AND the type of paper physically loaded AND the media type selected on the
+  // printer's own control panel/LCD screen.
+  // "Photographic" is too generic. Common Canon-specific types include:
+  // "PhotoPaperProLuster", "PhotoPaperPlusGlossyII", "MattePhotoPaper",
+  // "FineArtPhotoRag", etc.
+  // CRITICAL: Use `lpoptions -l` or the `/printer-details` endpoint to find the exact
+  // string for the paper you are using.
+  "MediaType": "auto", // Example: Changed from "Photographic". VERIFY THIS!
+
   "ColorModel": "RGB", // Standard RGB color mode
-  "cupsPrintQuality": "High", // High quality
-  // "Duplex": "None", // No duplex for photos
-  // "fit-to-page": "true" // Enable fit to page to handle small size differences
+  "cupsPrintQuality": "High", // High quality printing
+
+  // "Duplex": "None", // Usually "None" for photo prints
+  // "fit-to-page": "true" // Consider enabling if you experience scaling issues or unwanted cropping.
+  // This can help if the image aspect ratio doesn't perfectly fit the paper's printable area.
 };
 
 // Default printer options
 const defaultOptions: Record<string, string> = {
-  "PageSize": "A3+",
-  "fit-to-page": "true",
-  "print-quality": "high",
+  // Using "A3plus" for consistency, adjust if this is for truly generic printers.
+  "PageSize": "A3plus",
+  "fit-to-page": "true", // Generally useful
+  // "print-quality": "high", // cupsPrintQuality is preferred for more direct CUPS control
+  "InputSlot": "Auto", // A common generic default for auto feed tray
+  "MediaType": "auto", // A generic photo media type
+  "ColorModel": "RGB",
+  "cupsPrintQuality": "Normal", // A more conservative default quality
 };
 
 // Print an image by URL (protected)
