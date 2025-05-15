@@ -89,8 +89,8 @@ app.get('/printers', authenticate, async (_req: Request, res: Response) => {
 
 // Canon Pro 1000 specific printer options
 const canonProOptions: Record<string, string> = {
-  "PageSize": "A3+", // Use A3 (11.69" x 16.54") as it's very close to 11.7" x 16.5"
-  "PageRegion": "A3+", // Ensure region also matches
+  "PageSize": "A3", // Use A3 (11.69" x 16.54") as it's very close to 11.7" x 16.5"
+  "PageRegion": "A3", // Ensure region also matches
   "InputSlot": "ByPassTray", // Use bypass tray for specialty paper
   "MediaType": "Photographic", // Epson presentation paper is better treated as photo paper
   "ColorModel": "RGB", // Standard RGB color mode
@@ -101,7 +101,7 @@ const canonProOptions: Record<string, string> = {
 
 // Default printer options
 const defaultOptions: Record<string, string> = {
-  "PageSize": "A3+",
+  "PageSize": "A3",
   "fit-to-page": "true",
   "print-quality": "high",
 };
