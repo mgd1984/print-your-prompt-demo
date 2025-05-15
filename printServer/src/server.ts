@@ -95,8 +95,8 @@ const canonProOptions: Record<string, string> = {
   "MediaType": "Photographic", // Epson presentation paper is better treated as photo paper
   "ColorModel": "RGB", // Standard RGB color mode
   "cupsPrintQuality": "High", // High quality
-  "Duplex": "None", // No duplex for photos
-  "fit-to-page": "true" // Enable fit to page to handle small size differences
+  // "Duplex": "None", // No duplex for photos
+  // "fit-to-page": "true" // Enable fit to page to handle small size differences
 };
 
 // Default printer options

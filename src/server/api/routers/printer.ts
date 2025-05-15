@@ -147,14 +147,11 @@ export const printerRouter = createTRPCRouter({
             "ColorModel": "RGB", // Standard RGB color mode
             "cupsPrintQuality": "High", // High quality
             "Duplex": "None", // No duplex for photos
-            "fit-to-page": "true", // Enable fit to page to handle small size differences
-            "print-color-mode": "color" // Keep this setting
           };
           
           // Default printer options for other printers
           const defaultOptions = {
             "PageSize": "13x19",
-            "fit-to-page": "true",
             "print-quality": "high",
           };
           
