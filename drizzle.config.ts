@@ -15,7 +15,14 @@ const parseConnectionString = (url: string) => {
   };
 };
 
-const connectionParams = parseConnectionString(env.DATABASE_URL);
+// Get database URL - prefer POSTGRES_URL (Vercel) over DATABASE_URL
+const databaseUrl = env.POSTGRES_URL || env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("No database URL found. Please set DATABASE_URL or POSTGRES_URL environment variable.");
+}
+
+const connectionParams = parseConnectionString(databaseUrl);
 
 export default {
   schema: "./src/server/db/schema.ts",

@@ -80,8 +80,10 @@ If you encounter "printer in use" errors with precision color sensors:
 Create a `.env` file with:
 
 ```env
-# Database (Supabase)
+# Database (Supabase) - Use POSTGRES_URL for Vercel, DATABASE_URL for local
 DATABASE_URL="postgresql://postgres.qslbjmfdkmyubqdowmjd:[YOUR_PASSWORD]@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
+# OR for Vercel (automatically provided by Supabase integration):
+# POSTGRES_URL="postgresql://postgres.qslbjmfdkmyubqdowmjd:[YOUR_PASSWORD]@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
 
 # OpenAI (for image generation)
 OPENAI_API_KEY="your_openai_api_key"
@@ -97,7 +99,13 @@ CUPS_PASSWORD="your_cups_password"
 
 **Environment-specific setup:**
 - **Development**: Only `DATABASE_URL` and `OPENAI_API_KEY` needed (prints directly via USB)
-- **Production**: Add `PRINT_SERVER_URL` and `PRINT_SERVER_TOKEN` for ngrok tunnel
+- **Vercel Production**: Vercel provides `POSTGRES_URL` automatically when you connect Supabase
+- **Manual Production**: Add `PRINT_SERVER_URL` and `PRINT_SERVER_TOKEN` for ngrok tunnel
+
+**Vercel Setup:**
+1. Connect your Supabase project in Vercel dashboard (provides `POSTGRES_URL` automatically)
+2. Add `OPENAI_API_KEY` in Vercel environment variables
+3. Add `PRINT_SERVER_URL` and `PRINT_SERVER_TOKEN` if using ngrok for printing
 
 ## Database Commands
 
