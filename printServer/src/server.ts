@@ -8,6 +8,7 @@ import path from 'path';
 import multer from 'multer';
 import sharp from 'sharp';
 import dotenv from 'dotenv';
+import { findBestPrinter, loadPrinterConfig, savePrinterConfig, updatePrinterConfig } from './printerConfig';
 
 // Initialize environment variables
 dotenv.config();
@@ -79,64 +80,30 @@ app.get('/', (_req: Request, res: Response) => {
 app.get('/printers', authenticate, async (_req: Request, res: Response) => {
   try {
     const printers = await getPrinterNames();
-    res.json({ printers });
+    const config = loadPrinterConfig();
+    
+    // Map printer names to include which ones have configurations
+    const mappedPrinters = printers.map(printer => {
+      const printerConfig = config.printers.find(p => p.name === printer);
+      return {
+        name: printer,
+        hasConfiguration: !!printerConfig,
+        displayName: printerConfig?.displayName || printer,
+        priority: printerConfig?.priority || 0
+      };
+    });
+    
+    res.json({ 
+      printers: mappedPrinters,
+      configuredPrinters: config.printers.map(p => p.name),
+      defaultPrinter: config.defaultPrinterName
+    });
   } catch (error) {
     console.error('Error getting printers:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: `Failed to get printers: ${errorMessage}` });
   }
 });
-
-// Canon Pro 1000 specific printer options
-const canonProOptions: Record<string, string> = {
-  // PageSize: "A3+" is common, but some drivers prefer "A3plus", "SuperA3",
-  // or a specific dimension string (e.g., "SuperA3_329x483mm").
-  // Verify with `lpoptions -l -p YOUR_PRINTER_NAME`.
-  "PageSize": "A3plus",
-
-  // PageRegion should generally match PageSize.
-  "PageRegion": "A3plus",
-
-  // InputSlot: For A3+ photo/fine art paper on the Canon Pro-1000,
-  // the manual feed tray is typically used. Common CUPS names for this tray
-  // include "Manual", "Rear", "RearTray", "ManualFeed". "Top" refers to the
-  // main auto-feed tray, which might not be suitable for all A3+ media.
-  // CRITICAL: Verify the exact name for your manual feed tray using `lpoptions -l`.
-  "InputSlot": "by-pass-tray", // Changed from "Top" - common for A3+ specialty media
-
-  // MediaType: THIS IS THE MOST CRITICAL OPTION FOR "PAPER MISMATCH" ERRORS.
-  // The value must exactly match a media type supported by your printer driver
-  // AND the type of paper physically loaded AND the media type selected on the
-  // printer's own control panel/LCD screen.
-  // "Photographic" is too generic. Common Canon-specific types include:
-  // "PhotoPaperProLuster", "PhotoPaperPlusGlossyII", "MattePhotoPaper",
-  // "FineArtPhotoRag", etc.
-  // Using "auto" for MediaType, especially with a manual/bypass tray, is UNRELIABLE
-  // and can cause the printer to stall or report as "in use".
-  // CRITICAL: Use `lpoptions -l` or the `/printer-details` endpoint to find the exact
-  // string for the paper you are using. REPLACE THE VALUE BELOW.
-  "MediaType": "Photographic", // Example: Reverted from "auto". VERIFY THIS!
-
-  "ColorModel": "RGB", // Standard RGB color mode
-  "cupsPrintQuality": "High", // High quality printing
-
-  // "Duplex": "None", // Usually "None" for photo prints
-  // "fit-to-page": "true" // Consider enabling if you experience scaling issues or unwanted cropping.
-  // This can help if the image aspect ratio doesn't perfectly fit the paper's printable area.
-};
-
-// Default printer options
-const defaultOptions: Record<string, string> = {
-  // Using "A3plus" for consistency, adjust if this is for truly generic printers.
-  "PageSize": "A3plus",
-  "fit-to-page": "true", // Generally useful
-  // "print-quality": "high", // cupsPrintQuality is preferred for more direct CUPS control
-  "InputSlot": "Auto", // A common generic default for auto feed tray
-  // Using "auto" for MediaType can be unreliable. Prefer a specific, common type if possible.
-  "MediaType": "Photographic", // A generic photo media type, reverted from "auto"
-  "ColorModel": "RGB",
-  "cupsPrintQuality": "Normal", // A more conservative default quality
-};
 
 // Print an image by URL (protected)
 app.post('/print-url', authenticate, async (req: Request, res: Response) => {
@@ -192,7 +159,7 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
     
     console.log("Image conversions complete");
     
-    // Get printers
+    // Get printers and find the best one from our configuration
     console.log("Getting available printers...");
     const printers = await getPrinterNames();
     console.log("Available printers:", printers);
@@ -201,42 +168,20 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'No printers found' });
     }
     
-    // First try to find the Series 2 printer specifically
-    let selectedPrinter = printers.find(printer => 
-      printer.includes("Canon_PRO_1000_series_2") || 
-      printer.includes("PRO-1000 series 2")
-    );
+    // Find the best printer based on our configuration
+    const bestPrinter = findBestPrinter(printers);
     
-    // Fall back to any Canon printer if the preferred one isn't found
-    if (!selectedPrinter) {
-      selectedPrinter = printers.find(printer => 
-        printer.toLowerCase().includes('canon') || 
-        printer.toLowerCase().includes('pro-1000')
-      );
+    if (!bestPrinter) {
+      return res.status(500).json({ error: 'No suitable printer found' });
     }
     
-    // Use the first available printer as last resort
-    if (!selectedPrinter) {
-      if (printers.length > 0) {
-        selectedPrinter = printers[0];
-      } else {
-        return res.status(500).json({ error: 'No suitable printer found' });
-      }
-    }
-    
-    // At this point, selectedPrinter is definitely defined
-    // Using non-null assertion operator since we've checked above
-    console.log(`Using printer: ${selectedPrinter!}`);
-    
-    // Choose printer options based on printer type
-    const printerOptions = selectedPrinter!.toLowerCase().includes("canon") 
-      ? canonProOptions 
-      : defaultOptions;
+    // Use the selected printer and its options
+    console.log(`Using printer: ${bestPrinter.printer} with configured options`);
     
     // Connection options
     const connectionOptions: PrintParams = {
-      printer: selectedPrinter!,
-      printerOptions: printerOptions
+      printer: bestPrinter.printer,
+      printerOptions: bestPrinter.options
     };
     
     // Use TIFF or JPEG based on preference
@@ -251,9 +196,22 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
     
     console.log("File verified. Sending print job with options:", connectionOptions);
     
-    // Print the file
+    // Set a timeout for the print operation
+    const printTimeout = 30000; // 30 seconds
+    
+    // Print the file with timeout handling
     try {
-      const result = await printFile(filePath, connectionOptions);
+      // Create a promise that rejects after the timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Print operation timed out')), printTimeout);
+      });
+      
+      // Race the print operation against the timeout
+      const result = await Promise.race([
+        printFile(filePath, connectionOptions),
+        timeoutPromise
+      ]) as any;
+      
       console.log(`Print job submitted: ${result.requestId}`);
       
       // Try to get more info about the job status
@@ -261,7 +219,7 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
       
       res.json({ 
         success: true, 
-        printer: selectedPrinter,
+        printer: bestPrinter.printer,
         jobId: result.requestId,
         highQuality: useHighQuality,
         filePath: filePath // Include file path for debugging
@@ -269,6 +227,18 @@ app.post('/print-url', authenticate, async (req: Request, res: Response) => {
     } catch (printError) {
       console.error("Error in print operation:", printError);
       const errorMessage = printError instanceof Error ? printError.message : 'Unknown print error';
+      
+      // Try to cancel any stuck jobs
+      try {
+        const { exec } = require('child_process');
+        exec(`cancel -a ${bestPrinter.printer}`, (error: any) => {
+          if (error) console.error("Error canceling jobs:", error);
+          else console.log(`Canceled all jobs on ${bestPrinter.printer} to prevent queue issues`);
+        });
+      } catch (cleanupError) {
+        console.error("Error during cleanup:", cleanupError);
+      }
+      
       return res.status(500).json({ error: `Print operation failed: ${errorMessage}` });
     }
   } catch (error) {
@@ -288,64 +258,129 @@ app.post('/print-upload', authenticate, upload.single('image'), async (req: Mult
     const { useHighQuality = true } = req.body as { useHighQuality?: boolean };
     const imagePath = req.file.path;
     
-    // Get printers
+    // Get printers and find the best one from our configuration
     const printers = await getPrinterNames();
     
     if (printers.length === 0) {
       return res.status(500).json({ error: 'No printers found' });
     }
     
-    // First try to find the Series 2 printer specifically
-    let selectedPrinter = printers.find(printer => 
-      printer.includes("Canon_PRO_1000_series_2") || 
-      printer.includes("PRO-1000 series 2")
-    );
+    // Find the best printer based on our configuration
+    const bestPrinter = findBestPrinter(printers);
     
-    // Fall back to any Canon printer if the preferred one isn't found
-    if (!selectedPrinter) {
-      selectedPrinter = printers.find(printer => 
-        printer.toLowerCase().includes('canon') || 
-        printer.toLowerCase().includes('pro-1000')
-      );
+    if (!bestPrinter) {
+      return res.status(500).json({ error: 'No suitable printer found' });
     }
     
-    // Use the first available printer as last resort
-    if (!selectedPrinter) {
-      if (printers.length > 0) {
-        selectedPrinter = printers[0];
-      } else {
-        return res.status(500).json({ error: 'No suitable printer found' });
-      }
-    }
-    
-    // At this point, selectedPrinter is definitely defined
-    // Using non-null assertion operator since we've checked above
-    console.log(`Using printer: ${selectedPrinter!}`);
-    
-    // Choose printer options based on printer type
-    const printerOptions = selectedPrinter!.toLowerCase().includes("canon") 
-      ? canonProOptions 
-      : defaultOptions;
+    // Use the selected printer and its options
+    console.log(`Using printer: ${bestPrinter.printer} with configured options`);
     
     // Connection options
     const connectionOptions: PrintParams = {
-      printer: selectedPrinter!,
-      printerOptions: printerOptions
+      printer: bestPrinter.printer,
+      printerOptions: bestPrinter.options
     };
     
-    // Print the file
-    const result = await printFile(imagePath, connectionOptions);
+    // Set a timeout for the print operation
+    const printTimeout = 30000; // 30 seconds
     
-    res.json({ 
-      success: true, 
-      printer: selectedPrinter,
-      jobId: result.requestId,
-      highQuality: useHighQuality
-    });
+    // Print the file with timeout handling
+    try {
+      // Create a promise that rejects after the timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Print operation timed out')), printTimeout);
+      });
+      
+      // Race the print operation against the timeout
+      const result = await Promise.race([
+        printFile(imagePath, connectionOptions),
+        timeoutPromise
+      ]) as any;
+      
+      res.json({ 
+        success: true, 
+        printer: bestPrinter.printer,
+        jobId: result.requestId,
+        highQuality: useHighQuality
+      });
+    } catch (error) {
+      console.error('Error printing uploaded image:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Try to cancel any stuck jobs
+      try {
+        const { exec } = require('child_process');
+        exec(`cancel -a ${bestPrinter.printer}`, (error: any) => {
+          if (error) console.error("Error canceling jobs:", error);
+          else console.log(`Canceled all jobs on ${bestPrinter.printer} to prevent queue issues`);
+        });
+      } catch (cleanupError) {
+        console.error("Error during cleanup:", cleanupError);
+      }
+      
+      res.status(500).json({ error: `Failed to print image: ${errorMessage}` });
+    }
   } catch (error) {
     console.error('Error printing uploaded image:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: `Failed to print image: ${errorMessage}` });
+  }
+});
+
+// Add new API endpoint to update printer configuration
+app.post('/printer-config', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { 
+      name, 
+      displayName, 
+      options, 
+      priority = 50, 
+      setAsDefault = false 
+    } = req.body;
+    
+    if (!name || !options) {
+      return res.status(400).json({ error: 'Printer name and options are required' });
+    }
+    
+    // Update the printer configuration
+    updatePrinterConfig({
+      name,
+      displayName: displayName || name,
+      options,
+      priority
+    });
+    
+    // If this printer should be the default, update that too
+    if (setAsDefault) {
+      const config = loadPrinterConfig();
+      config.defaultPrinterName = name;
+      savePrinterConfig(config);
+    }
+    
+    // Return the updated configuration
+    const updatedConfig = loadPrinterConfig();
+    
+    res.json({ 
+      success: true, 
+      message: `Printer configuration for ${name} updated`,
+      config: updatedConfig
+    });
+  } catch (error) {
+    console.error('Error updating printer configuration:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `Failed to update printer configuration: ${errorMessage}` });
+  }
+});
+
+// Get current printer configuration
+app.get('/printer-config', authenticate, async (_req: Request, res: Response) => {
+  try {
+    const config = loadPrinterConfig();
+    res.json(config);
+  } catch (error) {
+    console.error('Error getting printer configuration:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `Failed to get printer configuration: ${errorMessage}` });
   }
 });
 
@@ -365,22 +400,19 @@ app.get('/printer-details', authenticate, async (_req: Request, res: Response) =
       return res.status(500).json({ error: 'No printers found' });
     }
 
-    // Find Canon printer
-    let selectedPrinter = printers.find(printer => 
-      printer.toLowerCase().includes('canon') || 
-      printer.toLowerCase().includes('pro-1000')
-    );
+    // Find the best printer based on our configuration
+    const bestPrinter = findBestPrinter(printers);
     
-    if (!selectedPrinter) {
-      selectedPrinter = printers[0];
+    if (!bestPrinter) {
+      return res.status(500).json({ error: 'No suitable printer found' });
     }
     
-    console.log(`Selected printer for details: ${selectedPrinter}`);
+    console.log(`Selected printer for details: ${bestPrinter.printer}`);
     
     // Get printer options using exec
     const { exec } = require('child_process');
     const printerDetailsPromise = new Promise((resolve, reject) => {
-      exec(`lpoptions -p ${selectedPrinter} -l`, (error: any, stdout: string, stderr: string) => {
+      exec(`lpoptions -p ${bestPrinter.printer} -l`, (error: any, stdout: string, stderr: string) => {
         if (error) {
           console.error(`Error getting printer details: ${error.message}`);
           return reject(error);
@@ -398,8 +430,9 @@ app.get('/printer-details', authenticate, async (_req: Request, res: Response) =
     // Return the printer details
     res.json({ 
       success: true, 
-      printer: selectedPrinter,
-      details: printerDetails
+      printer: bestPrinter.printer,
+      details: printerDetails,
+      currentOptions: bestPrinter.options
     });
   } catch (error) {
     console.error('Error getting printer details:', error);
@@ -419,17 +452,14 @@ app.get('/debug-print', authenticate, async (_req: Request, res: Response) => {
       return res.status(500).json({ error: 'No printers found' });
     }
 
-    // Find Canon printer
-    let selectedPrinter = printers.find(printer => 
-      printer.toLowerCase().includes('canon') || 
-      printer.toLowerCase().includes('pro-1000')
-    );
+    // Find the best printer based on our configuration
+    const bestPrinter = findBestPrinter(printers);
     
-    if (!selectedPrinter) {
-      selectedPrinter = printers[0];
+    if (!bestPrinter) {
+      return res.status(500).json({ error: 'No suitable printer found' });
     }
     
-    console.log(`Selected printer for debugging: ${selectedPrinter}`);
+    console.log(`Selected printer for debugging: ${bestPrinter.printer}`);
     
     // Use a test image in the uploads directory
     const uploadDir = path.join(__dirname, '..', 'uploads');
@@ -452,12 +482,26 @@ app.get('/debug-print', authenticate, async (_req: Request, res: Response) => {
     
     console.log(`Created test image at: ${testImagePath}`);
     
-    // Use minimal print options
+    // Use minimal options based on the printer's configuration
+    // We'll use just a few key options to minimize chances of errors
+    const minimalOptions = { 
+      ...bestPrinter.options,
+      // Keep only the essential options
+      ...Object.fromEntries(
+        Object.entries(bestPrinter.options)
+          .filter(([key]) => 
+            key === "PageSize" || 
+            key === "MediaType" || 
+            key === "CNIJMediaType" || 
+            key === "CNIJMediaSupply" ||
+            key === "ColorModel"
+          )
+      )
+    };
+    
     const minimalPrintOptions: PrintParams = {
-      printer: selectedPrinter,
-      printerOptions: {
-        "media": "Letter",
-      }
+      printer: bestPrinter.printer,
+      printerOptions: minimalOptions
     };
     
     console.log("Sending minimal print job with options:", minimalPrintOptions);
@@ -468,8 +512,9 @@ app.get('/debug-print', authenticate, async (_req: Request, res: Response) => {
     
     res.json({ 
       success: true, 
-      printer: selectedPrinter,
+      printer: bestPrinter.printer,
       jobId: result.requestId,
+      usedOptions: minimalOptions,
       message: "Debug print job sent with minimal options"
     });
   } catch (error) {
@@ -479,8 +524,203 @@ app.get('/debug-print', authenticate, async (_req: Request, res: Response) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
+// Add super minimal test print endpoint
+app.get('/minimal-print', authenticate, async (_req: Request, res: Response) => {
+  try {
+    // Get printers
+    const printers = await getPrinterNames();
+    console.log("Available printers for minimal print:", printers);
+    
+    if (printers.length === 0) {
+      return res.status(500).json({ error: 'No printers found' });
+    }
+
+    // Get the printer by name directly
+    const printerName = "Gertie";
+    
+    console.log(`Using printer directly: ${printerName}`);
+    
+    // Create a simple test image
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    // Create a super simple test image - just a small black square
+    const testImagePath = path.join(uploadDir, 'minimal-test.jpg');
+    await sharp({
+      create: {
+        width: 500,
+        height: 500,
+        channels: 3,
+        background: { r: 0, g: 0, b: 0 }
+      }
+    })
+    .jpeg({ quality: 80 })
+    .toFile(testImagePath);
+    
+    console.log(`Created minimal test image at: ${testImagePath}`);
+    
+    // Use absolute minimal options - just the page size and nothing else
+    const absoluteMinimalOptions = {
+      "PageSize": "Letter"
+    };
+    
+    // Create connection with minimal options
+    const minimalPrintOptions: PrintParams = {
+      printer: printerName,
+      printerOptions: absoluteMinimalOptions
+    };
+    
+    console.log("Sending absolute minimal print job with options:", minimalPrintOptions);
+    
+    // Use the command line directly instead of the API
+    const { exec } = require('child_process');
+    const printCommand = `lpr -P "${printerName}" -o PageSize=Letter "${testImagePath}"`;
+    
+    exec(printCommand, (error: any, stdout: string, stderr: string) => {
+      if (error) {
+        console.error(`Error with direct print command: ${error.message}`);
+        return res.status(500).json({ error: `Print command failed: ${error.message}` });
+      }
+      
+      if (stderr) {
+        console.error(`stderr: ${stderr}`);
+      }
+      
+      console.log("Direct print command succeeded");
+      console.log("stdout:", stdout);
+      
+      res.json({ 
+        success: true, 
+        printer: printerName,
+        command: printCommand,
+        usedOptions: absoluteMinimalOptions,
+        message: "Minimal print job sent via direct command"
+      });
+    });
+  } catch (error) {
+    console.error('Error in minimal printing:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `Failed to print minimal image: ${errorMessage}` });
+  }
+});
+
+// Add printer status debug endpoint
+app.get('/printer-status', authenticate, async (_req: Request, res: Response) => {
+  try {
+    const { exec } = require('child_process');
+    const printerName = "Gertie";
+    
+    // Execute multiple commands in parallel to gather comprehensive status information
+    const commands = {
+      lpstat: `lpstat -p ${printerName} -l`,
+      lpoptions: `lpoptions -p ${printerName}`,
+      lpq: `lpq -P ${printerName}`,
+      jobs: `lpstat -o ${printerName}`
+    };
+    
+    const results: Record<string, any> = {};
+    
+    // Execute all commands in parallel
+    const commandPromises = Object.entries(commands).map(([key, cmd]) => {
+      return new Promise<void>((resolve) => {
+        exec(cmd, (error: any, stdout: string, stderr: string) => {
+          results[key] = {
+            stdout: stdout.trim(),
+            stderr: stderr.trim(),
+            error: error ? error.message : null
+          };
+          resolve();
+        });
+      });
+    });
+    
+    // Wait for all commands to complete
+    await Promise.all(commandPromises);
+    
+    // Check physical connection to printer
+    exec(`ping -c 1 -W 1 $(lpstat -v ${printerName} | grep -o -E '([0-9]{1,3}\\.){3}[0-9]{1,3}')`, 
+      (error: any, stdout: string, stderr: string) => {
+        results.connection = {
+          stdout: stdout.trim(),
+          stderr: stderr.trim(),
+          error: error ? error.message : null,
+          connectionOk: !error
+        };
+        
+        // Execute one more command to reset the printer
+        exec(`cupsenable ${printerName}`, () => {
+          results.resetStatus = "Attempted to reset printer status";
+          
+          // Return all results
+          res.json({
+            printer: printerName,
+            status: results,
+            timestamp: new Date().toISOString()
+          });
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Error checking printer status:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `Failed to check printer status: ${errorMessage}` });
+  }
+});
+
+// Start the server
+app.listen(PORT, async () => {
   console.log(`Print server running on http://localhost:${PORT}`);
-  console.log(`Authentication ${AUTH_TOKEN ? 'enabled' : 'disabled'}`);
-}); 
+  
+  // Log authentication status
+  if (AUTH_TOKEN) {
+    console.log('Authentication enabled');
+  } else {
+    console.log('Authentication disabled');
+  }
+  
+  // Clean up any stuck print jobs
+  await cleanPrintQueues();
+});
+
+// Function to clean print queues at startup
+async function cleanPrintQueues() {
+  try {
+    console.log("Cleaning print queues...");
+    const { exec } = require('child_process');
+    
+    // Get printer names
+    const printers = await getPrinterNames();
+    
+    // For each printer, cancel all jobs and reset
+    for (const printer of printers) {
+      console.log(`Cleaning queue for printer: ${printer}`);
+      
+      // Cancel all jobs
+      const cancelPromise = new Promise<void>((resolve) => {
+        exec(`cancel -a ${printer}`, (error: any) => {
+          if (error) console.error(`Error canceling jobs for ${printer}:`, error);
+          else console.log(`Canceled all jobs on ${printer}`);
+          resolve();
+        });
+      });
+      
+      // Enable the printer
+      const enablePromise = new Promise<void>((resolve) => {
+        exec(`cupsenable ${printer}`, (error: any) => {
+          if (error) console.error(`Error enabling ${printer}:`, error);
+          else console.log(`Enabled ${printer}`);
+          resolve();
+        });
+      });
+      
+      // Wait for both operations to complete
+      await Promise.all([cancelPromise, enablePromise]);
+    }
+    
+    console.log("Print queues cleaned successfully");
+  } catch (error) {
+    console.error("Error cleaning print queues:", error);
+  }
+} 

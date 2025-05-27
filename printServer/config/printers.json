@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-05-27T12:20:30.000Z",
+  "defaultPrinterName": "Canon_PRO_1000_USB",
+  "printers": [
+    {
+      "name": "Canon_PRO_1000_USB",
+      "displayName": "Canon Pro 1000 (Direct USB)",
+      "priority": 200,
+      "options": {
+        "PageSize": "13x19",
+        "InputSlot": "by-pass-tray",
+        "MediaType": "photographic",
+        "ColorModel": "RGB",
+        "cupsPrintQuality": "High",
+        "CNIJInkWarning": "0",
+        "CNIJInkCartridgeSettings": "0"
+      }
+    },
+    {
+      "name": "Canon_PRO_1000_series_3",
+      "displayName": "Canon Pro 1000 (USB Fallback)",
+      "priority": 100,
+      "options": {
+        "PageSize": "13x19", 
+        "InputSlot": "by-pass-tray",
+        "MediaType": "photographic",
+        "ColorModel": "RGB",
+        "cupsPrintQuality": "High",
+        "CNIJInkWarning": "0"
+      }
+    },
+    {
+      "name": "default",
+      "displayName": "Default Printer",
+      "priority": 10,
+      "options": {
+        "PageSize": "Letter",
+        "InputSlot": "Auto",
+        "MediaType": "Auto",
+        "ColorModel": "RGB",
+        "cupsPrintQuality": "Normal"
+      }
+    }
+  ]
+}

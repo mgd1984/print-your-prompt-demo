@@ -1,5 +1,5 @@
-import { Pool } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { env } from "@/env";
 import * as schema from "./schema";
 
@@ -8,11 +8,45 @@ import * as schema from "./schema";
  * update.
  */
 const globalForDb = globalThis as unknown as {
-  client: Pool | undefined;
+  pool: Pool | undefined;
 };
 
-export const client = 
-  globalForDb.client ?? new Pool({ connectionString: env.DATABASE_URL });
-if (env.NODE_ENV !== "production") globalForDb.client = client;
+// Parse connection string to individual parameters
+// This is required for proper SSL handling with Supabase on Vercel
+const parseConnectionString = (url: string) => {
+  const parsed = new URL(url);
+  return {
+    host: parsed.hostname,
+    port: parseInt(parsed.port) || 5432,
+    user: parsed.username,
+    password: parsed.password,
+    database: parsed.pathname.slice(1), // Remove leading slash
+  };
+};
 
-export const db = drizzle(client, { schema });
+const connectionParams = parseConnectionString(env.DATABASE_URL);
+
+// SSL configuration for Vercel + Supabase
+// rejectUnauthorized: false is required for this specific setup
+// This is a known limitation with Vercel's serverless environment + Supabase
+const sslConfig = env.NODE_ENV === "production" 
+  ? { rejectUnauthorized: false } // Required for Vercel + Supabase compatibility
+  : false;
+
+export const pool =
+  globalForDb.pool ?? 
+  new Pool({
+    ...connectionParams,
+    ssl: sslConfig,
+    // Connection pool settings for better performance
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+
+if (env.NODE_ENV !== "production") globalForDb.pool = pool;
+
+export const db = drizzle(pool, { schema });
+
+// For backwards compatibility, export client as well
+export const client = pool;

@@ -248,7 +248,7 @@ export default function AdminPage() {
             </CardHeader>
             <div className="bg-slate-900 p-0">
               <iframe
-                src="https://vdo.ninja/?view=printcam"
+                src="https://vdo.ninja/?scene&room=sinceseem9&password=05222025"
                 className="w-full aspect-video"
                 allow="camera; microphone; fullscreen"
                 title="PrintCam Live Stream"
