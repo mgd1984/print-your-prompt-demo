@@ -191,32 +191,29 @@ export const printerRouter = createTRPCRouter({
         
         // If running locally (development), use direct printing via node-cups
         if (isLocalEnvironment()) {
-          // Check if this is a base64 data URL
-          if (input.imageUrl.startsWith('data:image/')) {
-            console.log("Base64 image detected, converting to file for local printing");
-            const tempDir = path.join(process.cwd(), "public", "uploads");
-            
-            // Ensure the directory exists
-            if (!fs.existsSync(tempDir)) {
-              fs.mkdirSync(tempDir, { recursive: true });
+          // Handle different image URL types
+          let imagePath: string = "";
+          
+          if (input.imageUrl.startsWith("data:image/")) {
+            // Handle base64 data URLs (convert to temporary file)
+            console.log("Processing base64 data URL...");
+            const base64Data = input.imageUrl.split(',')[1];
+            if (!base64Data) {
+              throw new Error("Invalid base64 data URL");
             }
             
-            // Extract base64 data
-            const matches = input.imageUrl.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-            if (!matches || matches.length !== 3) {
-              throw new Error("Invalid base64 image format");
-            }
-            
-            const format = matches[1] as string;
-            const base64Data = matches[2] as string;
             const buffer = Buffer.from(base64Data, 'base64');
-            
-            // Create temporary file
+            const format = input.imageUrl.includes('data:image/png') ? 'png' : 'jpg';
             const timestamp = Date.now();
-            const tempFilePath = path.join(tempDir, `temp-image-${timestamp}.${format}`);
-            fs.writeFileSync(tempFilePath, buffer);
+            const tempFilePath = path.join(process.cwd(), "public", "uploads", `temp-image-${timestamp}.${format}`);
             
-            // Use this temporary file for printing
+            // Ensure uploads directory exists
+            const uploadsDir = path.dirname(tempFilePath);
+            if (!fs.existsSync(uploadsDir)) {
+              fs.mkdirSync(uploadsDir, { recursive: true });
+            }
+            
+            fs.writeFileSync(tempFilePath, buffer);
             input.imageUrl = `/uploads/temp-image-${timestamp}.${format}`;
             console.log("Converted base64 to temporary file:", input.imageUrl);
             
@@ -234,42 +231,92 @@ export const printerRouter = createTRPCRouter({
             
             // Schedule cleanup after 5 seconds
             setTimeout(cleanupTempFile, 5000);
-          }
-          
-          // If this is a JPEG URL from the web UI, try to find the corresponding TIFF file
-          let imagePath;
-          
-          if (input.useHighQuality && input.imageUrl.endsWith('.jpg')) {
-            // Convert /uploads/image-1234567890.jpg to /uploads/image-1234567890.tiff
-            const tiffPath = input.imageUrl.replace('.jpg', '.tiff');
-            const absoluteTiffPath = path.join(process.cwd(), "public", tiffPath.startsWith('/') ? tiffPath.slice(1) : tiffPath);
             
-            console.log("Looking for TIFF file at:", absoluteTiffPath);
+            // Set imagePath for printing
+            imagePath = tempFilePath;
+          } else if (input.imageUrl.startsWith("https://")) {
+            // Handle UploadThing URLs or other remote URLs (download to temporary file)
+            console.log("Processing remote URL:", input.imageUrl);
             
-            // Check if TIFF exists
-            if (fs.existsSync(absoluteTiffPath)) {
-              imagePath = absoluteTiffPath;
-              console.log("Using high-quality TIFF file for printing:", imagePath);
-            } else {
-              console.log("TIFF file not found, falling back to JPEG");
+            try {
+              const response = await fetch(input.imageUrl);
+              if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+              }
+              
+              const buffer = Buffer.from(await response.arrayBuffer());
+              const timestamp = Date.now();
+              const format = input.imageUrl.includes('.png') ? 'png' : 'jpg';
+              const tempFilePath = path.join(process.cwd(), "public", "uploads", `temp-remote-${timestamp}.${format}`);
+              
+              // Ensure uploads directory exists
+              const uploadsDir = path.dirname(tempFilePath);
+              if (!fs.existsSync(uploadsDir)) {
+                fs.mkdirSync(uploadsDir, { recursive: true });
+              }
+              
+              fs.writeFileSync(tempFilePath, buffer);
+              const originalImageUrl = input.imageUrl;
+              input.imageUrl = `/uploads/temp-remote-${timestamp}.${format}`;
+              console.log("Downloaded remote image to temporary file:", input.imageUrl);
+              
+              // Clean up function to remove temp file after printing
+              const cleanupTempFile = () => {
+                try {
+                  if (fs.existsSync(tempFilePath)) {
+                    fs.unlinkSync(tempFilePath);
+                    console.log("Temporary file removed:", tempFilePath);
+                  }
+                } catch (e) {
+                  console.error("Error removing temporary file:", e);
+                }
+              };
+              
+              // Schedule cleanup after 10 seconds (longer for remote files)
+              setTimeout(cleanupTempFile, 10000);
+              
+              // Set imagePath for printing
+              imagePath = tempFilePath;
+            } catch (fetchError) {
+              console.error("Error downloading remote image:", fetchError);
+              throw new Error(`Failed to download image for printing: ${(fetchError as Error).message}`);
             }
-          }
-          
-          // Fallback to original image if TIFF not found
-          if (!imagePath) {
-            // Remove leading slash if present
-            const relativePath = input.imageUrl.startsWith("/") 
-              ? input.imageUrl.slice(1) 
-              : input.imageUrl;
+          } else {
+            // Handle local file paths (legacy support)
             
-            // Construct the absolute path to the image
-            imagePath = path.join(process.cwd(), "public", relativePath);
-            console.log("Using original image file for printing:", imagePath);
+            // For local files, check if high-quality TIFF version exists
+            if (input.useHighQuality && input.imageUrl.endsWith('.jpg')) {
+              // Convert /uploads/image-1234567890.jpg to /uploads/image-1234567890.tiff
+              const tiffPath = input.imageUrl.replace('.jpg', '.tiff');
+              const absoluteTiffPath = path.join(process.cwd(), "public", tiffPath.startsWith('/') ? tiffPath.slice(1) : tiffPath);
+              
+              console.log("Looking for TIFF file at:", absoluteTiffPath);
+              
+              // Check if TIFF exists
+              if (fs.existsSync(absoluteTiffPath)) {
+                imagePath = absoluteTiffPath;
+                console.log("Using high-quality TIFF file for printing:", imagePath);
+              } else {
+                console.log("TIFF file not found, falling back to JPEG");
+              }
+            }
             
-            // Check if this file exists
-            if (!fs.existsSync(imagePath)) {
-              console.error("ERROR: Image file does not exist at path:", imagePath);
-              throw new Error(`Image file not found: ${imagePath}`);
+            // Fallback to original image if TIFF not found
+            if (!imagePath) {
+              // Remove leading slash if present
+              const relativePath = input.imageUrl.startsWith("/") 
+                ? input.imageUrl.slice(1) 
+                : input.imageUrl;
+              
+              // Construct the absolute path to the image
+              imagePath = path.join(process.cwd(), "public", relativePath);
+              console.log("Using original image file for printing:", imagePath);
+              
+              // Check if this file exists
+              if (!fs.existsSync(imagePath)) {
+                console.error("ERROR: Image file does not exist at path:", imagePath);
+                throw new Error(`Image file not found: ${imagePath}`);
+              }
             }
           }
           

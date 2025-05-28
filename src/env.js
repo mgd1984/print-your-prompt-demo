@@ -23,6 +23,10 @@ export const env = createEnv({
     // OpenAI - Optional for build time, required at runtime
     OPENAI_API_KEY: z.string().min(1).optional(),
     
+    // UploadThing - For persistent image storage
+    UPLOADTHING_TOKEN: z.string().min(1).optional(),
+    UPLOADTHING_APP_ID: z.string().min(1).optional(),
+    
     // Print Server (for production with ngrok)
     PRINT_SERVER_URL: z.string().url().optional(),
     PRINT_SERVER_TOKEN: z.string().min(1).optional(),
@@ -56,6 +60,8 @@ export const env = createEnv({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     NODE_ENV: process.env.NODE_ENV,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
+    UPLOADTHING_APP_ID: process.env.UPLOADTHING_APP_ID,
     PRINT_SERVER_URL: process.env.PRINT_SERVER_URL,
     PRINT_SERVER_TOKEN: process.env.PRINT_SERVER_TOKEN,
     CUPS_USER: process.env.CUPS_USER,

@@ -37,6 +37,7 @@
     "@trpc/server": "^11.0.0",
     "@types/pg": "^8.15.2",
     "@types/uuid": "^10.0.0",
+    "@uploadthing/react": "^7.3.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cookies-next": "^5.1.0",
@@ -56,6 +57,7 @@
     "sharp": "^0.34.1",
     "superjson": "^2.2.1",
     "tailwind-merge": "^3.3.0",
+    "uploadthing": "^7.7.2",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },
