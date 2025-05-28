@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { api } from "@/trpc/react";
 import { formatDistanceToNow } from "date-fns";
@@ -14,165 +14,67 @@ type GalleryItem = {
 };
 
 /**
- * Normalize image URL for Next.js Image component - fixed to handle all URL formats properly
+ * Normalize image URL for Next.js Image component
  */
-function normalizeImageUrl(url: string | null | undefined, itemId: number): string {
-  // For debugging
-  console.log(`[Item ${itemId}] Original imageUrl:`, url);
-
+function normalizeImageUrl(url: string | null | undefined): string {
   if (!url) {
-    return `/uploads/image-1747188078877.jpg`;
+    return createPlaceholderDataUrl();
   }
   
-  // Handle placeholder case
-  if (url === "placeholder-will-use-direct-openai-url") {
-    return `/uploads/image-1747188078877.jpg`;
-  }
-  
-  // Handle case where URL is in database but points to a missing/non-existent file
-  if (url.includes("placeholder") || url.includes("undefined")) {
-    return `/uploads/image-1747188078877.jpg`;
+  // Handle placeholder cases
+  if (url === "placeholder-will-use-direct-openai-url" || 
+      url.includes("placeholder") || 
+      url.includes("undefined")) {
+    return createPlaceholderDataUrl();
   }
 
-  // Handle the case where URLs might be identical due to being set incorrectly
-  // This helps create visual differentiation by using the item ID
-  if (url === "/uploads/image-1747188078877.jpg") {
-    // Try to use one of our other sample images based on the item ID to create variety
-    const images = [
-      '/uploads/image-1747187938920.jpg',
-      '/uploads/image-1747187021981.jpg',
-      '/uploads/image-1747186073405.jpg',
-      '/uploads/image-1747185992142.jpg',
-      '/uploads/image-1747185904624.jpg'
-    ];
-    
-    // Use modulo to select an image based on ID
-    return images[itemId % images.length] || url;
-  }
-  
   // Handle relative paths that use @/ format (module imports)
   if (url.startsWith('@/')) {
-    console.log(`[Item ${itemId}] Fixed @/ path:`, url.replace('@/', '/'));
     return url.replace('@/', '/');
   }
   
   // If it's a URL without protocol, add https
   if (url.match(/^\/\//) && !url.startsWith('http')) {
-    console.log(`[Item ${itemId}] Added https to protocol-less URL:`, `https:${url}`);
     return `https:${url}`;
   }
   
-  // Already absolute URL, no need to change
-  if (url.startsWith('http') || url.startsWith('/')) {
+  // Already absolute URL or relative path, return as is
+  if (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:')) {
     return url;
   }
   
   // Default prepend slash if it doesn't have one
-  console.log(`[Item ${itemId}] Added leading slash:`, `/${url}`);
   return `/${url}`;
+}
+
+/**
+ * Create a simple SVG placeholder as data URL
+ */
+function createPlaceholderDataUrl(): string {
+  const svg = `
+    <svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+      <rect width="400" height="400" fill="#f8fafc" />
+      <circle cx="200" cy="180" r="40" fill="#e2e8f0" />
+      <rect x="160" y="240" width="80" height="8" rx="4" fill="#e2e8f0" />
+      <rect x="170" y="260" width="60" height="6" rx="3" fill="#f1f5f9" />
+      <text x="50%" y="320" font-family="Arial" font-size="14" fill="#64748b" text-anchor="middle">
+        No Image Available
+      </text>
+    </svg>
+  `;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 
 export default function GalleryDisplay() {
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [useHighQuality, setUseHighQuality] = useState(true);
-  const [availableImages, setAvailableImages] = useState<string[]>([]);
-  const [defaultImage, setDefaultImage] = useState<string>('');
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-  
-  // Fetch available images from the API
-  useEffect(() => {
-    const fetchAvailableImages = async () => {
-      try {
-        const response = await fetch('/api/available-images');
-        if (!response.ok) throw new Error('Failed to fetch available images');
-        const data = await response.json();
-        
-        if (data.images && Array.isArray(data.images) && data.images.length > 0) {
-          setAvailableImages(data.images);
-          // Set the first image as the default fallback
-          setDefaultImage(data.images[0]);
-          console.log(`Loaded ${data.images.length} available images`);
-        } else {
-          console.warn('No available images found in uploads directory');
-          // Create a data URL for a simple placeholder if no images exist
-          createPlaceholderDataUrl();
-        }
-      } catch (error) {
-        console.error('Error fetching available images:', error);
-        // Create a data URL for a simple placeholder if API fails
-        createPlaceholderDataUrl();
-      } finally {
-        setImagesLoaded(true);
-      }
-    };
-    
-    // Create a simple SVG placeholder as data URL if no images are available
-    const createPlaceholderDataUrl = () => {
-      const svg = `
-        <svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
-          <rect width="400" height="400" fill="#f8fafc" />
-          <text x="50%" y="50%" font-family="Arial" font-size="20" fill="#3b82f6" text-anchor="middle">
-            Image Placeholder
-          </text>
-        </svg>
-      `;
-      const dataUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
-      setDefaultImage(dataUrl);
-      setAvailableImages([dataUrl]);
-    };
-    
-    fetchAvailableImages();
-  }, []);
-  
-  // Get a consistent image URL for a specific item ID
-  const getImageForItem = (itemId: number, originalUrl: string | null | undefined): string => {
-    // Handle the case where images haven't loaded yet
-    if (!imagesLoaded) {
-      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iI2Y4ZmFmYyIgLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIwIiBmaWxsPSIjM2I4MmY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5Mb2FkaW5nLi4uPC90ZXh0Pjwvc3ZnPg==';
-    }
-    
-    // If we have no images available at all, use the default SVG data URL
-    if (availableImages.length === 0) {
-      return defaultImage;
-    }
-    
-    // If we have a valid URL that's not a placeholder, try to use it
-    if (originalUrl && 
-        !originalUrl.includes('placeholder') && 
-        !originalUrl.includes('undefined') &&
-        originalUrl !== "placeholder-will-use-direct-openai-url") {
-      
-      // Fix @/ paths
-      if (originalUrl.startsWith('@/')) {
-        return originalUrl.replace('@/', '/');
-      }
-      
-      // Add https to protocol-less URLs
-      if (originalUrl.match(/^\/\//) && !originalUrl.startsWith('http')) {
-        return `https:${originalUrl}`;
-      }
-      
-      // Ensure URLs start with /
-      if (!originalUrl.startsWith('/') && !originalUrl.startsWith('http') && !originalUrl.startsWith('data:')) {
-        return `/${originalUrl}`;
-      }
-      
-      // Return the original URL if it's properly formatted
-      return originalUrl;
-    }
-    
-    // Use deterministic selection based on item ID to ensure consistency
-    // This ensures the same item always gets the same image
-    const index = Math.abs(itemId) % availableImages.length;
-    return availableImages[index] || defaultImage;
-  };
-  
+
   const galleryQuery = api.prompt.getGallery.useQuery(
     { limit: 50 },
     { refetchInterval: 30000 } // Refresh every 30 seconds
   );
-  
+
   // Add printer mutation
   const printImage = api.printer.print.useMutation({
     onSuccess: (data) => {
@@ -185,16 +87,16 @@ export default function GalleryDisplay() {
       alert("Failed to print image: " + error.message);
     },
   });
-  
+
   const handleImageClick = (item: GalleryItem) => {
     setSelectedImage(item);
   };
-  
+
   const closeModal = () => {
     setSelectedImage(null);
     setIsPrinting(false);
   };
-  
+
   const handlePrintImage = () => {
     if (!selectedImage?.imageUrl) return;
     
@@ -204,22 +106,9 @@ export default function GalleryDisplay() {
       useHighQuality
     });
   };
-  
+
   const galleryItems = galleryQuery.data?.gallery || [];
-  
-  // Loading state when images haven't been fetched yet
-  if (!imagesLoaded) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce"></div>
-          <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-          <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-        </div>
-      </div>
-    );
-  }
-  
+
   return (
     <div className="w-full">
       {galleryQuery.isLoading ? (
@@ -232,7 +121,13 @@ export default function GalleryDisplay() {
         </div>
       ) : galleryItems.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-[#3b82f6] text-lg">No generated images yet. Check back later!</p>
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+            <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Images Yet</h3>
+          <p className="text-[#3b82f6] text-sm">Generated images will appear here once prompts are processed.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -244,18 +139,14 @@ export default function GalleryDisplay() {
             >
               <div className="relative aspect-square">
                 <Image
-                  src={getImageForItem(item.id, item.imageUrl) || defaultImage}
+                  src={normalizeImageUrl(item.imageUrl)}
                   alt={item.text}
                   fill
                   className="object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    if (target && availableImages.length > 0) {
-                      // Use a different image from our array if available
-                      const fallbackIndex = (item.id + 1) % availableImages.length;
-                      target.src = availableImages[fallbackIndex] || defaultImage;
-                    } else if (target) {
-                      target.src = defaultImage;
+                    if (target) {
+                      target.src = createPlaceholderDataUrl();
                     }
                   }}
                   unoptimized // Bypass image optimization that may cause issues
@@ -308,18 +199,14 @@ export default function GalleryDisplay() {
             
             <div className="relative max-h-[60vh] min-h-[300px]">
               <Image
-                src={getImageForItem(selectedImage.id, selectedImage.imageUrl) || defaultImage}
+                src={normalizeImageUrl(selectedImage.imageUrl)}
                 alt={selectedImage.text}
                 fill
                 className="object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  if (target && availableImages.length > 0) {
-                    // Use a different image from our array if available
-                    const fallbackIndex = (selectedImage.id + 1) % availableImages.length;
-                    target.src = availableImages[fallbackIndex] || defaultImage;
-                  } else if (target) {
-                    target.src = defaultImage;
+                  if (target) {
+                    target.src = createPlaceholderDataUrl();
                   }
                 }}
                 unoptimized // Bypass image optimization that may cause issues
