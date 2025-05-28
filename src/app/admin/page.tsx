@@ -25,6 +25,12 @@ export default function AdminPage() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [selectedPromptForGeneration, setSelectedPromptForGeneration] = useState<string | null>(null);
+  const [generationSettings, setGenerationSettings] = useState({
+    model: "gpt-image-1" as "gpt-image-1" | "dall-e-3" | "dall-e-2",
+    quality: "standard" as "standard" | "hd",
+    style: "vivid" as "vivid" | "natural",
+    size: "1024x1024" as "1024x1024" | "1024x1536" | "1536x1024" | "auto",
+  });
 
   // Get all prompts for the Image Generation Studio
   const promptsQuery = api.prompt.getAll.useQuery(
@@ -34,6 +40,40 @@ export default function AdminPage() {
       refetchIntervalInBackground: true,
     }
   );
+
+  // Generate image mutation
+  const generateImageMutation = api.image.generate.useMutation({
+    onSuccess: (data) => {
+      console.log("✅ Image generation SUCCESS:", data);
+      setIsGeneratingImage(false);
+      if (data.imageUrl) {
+        setGeneratedImageUrl(data.imageUrl);
+        console.log("✅ Image URL set:", data.imageUrl);
+      } else {
+        console.error("❌ No image URL returned from generation");
+      }
+    },
+    onError: (error) => {
+      console.error("❌ Image generation ERROR:", error);
+      setIsGeneratingImage(false);
+      alert("Failed to generate image: " + error.message);
+    },
+    onMutate: (variables) => {
+      console.log("🚀 Starting image generation with variables:", variables);
+    },
+  });
+
+  // Print image mutation
+  const printImageMutation = api.printer.print.useMutation({
+    onSuccess: (data) => {
+      console.log("Image sent to printer successfully:", data);
+      alert(`Image sent to printer! ${data.highQuality ? '(High-quality TIFF)' : '(Standard quality)'}`);
+    },
+    onError: (error) => {
+      console.error("Error printing image:", error);
+      alert("Failed to print image: " + error.message);
+    },
+  });
 
   // Check authentication on component mount
   useEffect(() => {
@@ -611,15 +651,23 @@ export default function AdminPage() {
                           <Button 
                             className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg"
                             onClick={() => {
+                              console.log("Generate Image button clicked!");
+                              console.log("Selected prompt:", selectedPromptForGeneration);
                               if (selectedPromptForGeneration) {
                                 setIsGeneratingImage(true);
                                 setGeneratedImageUrl(null);
                                 
-                                // Simulate image generation (replace with actual API call)
-                                setTimeout(() => {
-                                  setIsGeneratingImage(false);
-                                  setGeneratedImageUrl('/api/placeholder/400/400'); // Placeholder - replace with actual generated image
-                                }, 5000); // 5 second simulation
+                                console.log("Calling generateImageMutation with prompt:", selectedPromptForGeneration);
+                                // Use the actual tRPC API call
+                                generateImageMutation.mutate({ 
+                                  prompt: selectedPromptForGeneration,
+                                  model: generationSettings.model,
+                                  quality: generationSettings.quality,
+                                  style: generationSettings.style,
+                                  size: generationSettings.size,
+                                });
+                              } else {
+                                console.log("No prompt selected!");
                               }
                             }}
                             disabled={!selectedPromptForGeneration || isGeneratingImage}
@@ -640,19 +688,89 @@ export default function AdminPage() {
                         <CardContent className="space-y-4">
                           <div className="space-y-3">
                             <div>
+                              <label className="text-sm font-medium text-slate-300 block mb-2">Model</label>
+                              <select 
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                value={generationSettings.model}
+                                onChange={(e) => setGenerationSettings(prev => ({ 
+                                  ...prev, 
+                                  model: e.target.value as "gpt-image-1" | "dall-e-3" | "dall-e-2" 
+                                }))}
+                              >
+                                <option value="gpt-image-1">GPT-Image 1 (Latest)</option>
+                                <option value="dall-e-3">DALL-E 3</option>
+                                <option value="dall-e-2">DALL-E 2 (Faster)</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-sm font-medium text-slate-300 block mb-2">Size</label>
+                              <select 
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                value={generationSettings.size}
+                                onChange={(e) => setGenerationSettings(prev => ({ 
+                                  ...prev, 
+                                  size: e.target.value as "1024x1024" | "1024x1536" | "1536x1024" | "auto" 
+                                }))}
+                              >
+                                <option value="1024x1024">Square (1024×1024)</option>
+                                <option value="1024x1536">Portrait (1024×1536)</option>
+                                <option value="1536x1024">Landscape (1536×1024)</option>
+                                {generationSettings.model === "gpt-image-1" && (
+                                  <option value="auto">Auto (Best for prompt)</option>
+                                )}
+                              </select>
+                              {generationSettings.model !== "gpt-image-1" && (
+                                <p className="text-xs text-slate-400 mt-1">Auto size only available with GPT-Image 1</p>
+                              )}
+                            </div>
+                            
+                            <div>
                               <label className="text-sm font-medium text-slate-300 block mb-2">Quality</label>
-                              <select className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                              <select 
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                value={generationSettings.quality}
+                                onChange={(e) => setGenerationSettings(prev => ({ 
+                                  ...prev, 
+                                  quality: e.target.value as "standard" | "hd" 
+                                }))}
+                                disabled={generationSettings.model === "dall-e-2" || generationSettings.model === "gpt-image-1"}
+                              >
                                 <option value="standard">Standard</option>
                                 <option value="hd">HD Quality</option>
                               </select>
+                              {(generationSettings.model === "dall-e-2" || generationSettings.model === "gpt-image-1") && (
+                                <p className="text-xs text-slate-400 mt-1">
+                                  {generationSettings.model === "gpt-image-1" 
+                                    ? "GPT-Image 1 automatically uses optimal quality" 
+                                    : "HD quality only available with DALL-E 3"
+                                  }
+                                </p>
+                              )}
                             </div>
                             
                             <div>
                               <label className="text-sm font-medium text-slate-300 block mb-2">Style</label>
-                              <select className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                <option value="vivid">Vivid</option>
-                                <option value="natural">Natural</option>
+                              <select 
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                value={generationSettings.style}
+                                onChange={(e) => setGenerationSettings(prev => ({ 
+                                  ...prev, 
+                                  style: e.target.value as "vivid" | "natural" 
+                                }))}
+                                disabled={generationSettings.model === "dall-e-2" || generationSettings.model === "gpt-image-1"}
+                              >
+                                <option value="vivid">Vivid (More Creative)</option>
+                                <option value="natural">Natural (More Realistic)</option>
                               </select>
+                              {(generationSettings.model === "dall-e-2" || generationSettings.model === "gpt-image-1") && (
+                                <p className="text-xs text-slate-400 mt-1">
+                                  {generationSettings.model === "gpt-image-1" 
+                                    ? "GPT-Image 1 automatically optimizes style based on prompt" 
+                                    : "Style options only available with DALL-E 3"
+                                  }
+                                </p>
+                              )}
                             </div>
                             
                             <div className="flex items-center justify-between">
@@ -675,6 +793,14 @@ export default function AdminPage() {
                               generatedImageUrl ? 'hover:border-green-400/50 hover:bg-green-500/10' : ''
                             }`}
                             disabled={!generatedImageUrl}
+                            onClick={() => {
+                              if (generatedImageUrl) {
+                                printImageMutation.mutate({ 
+                                  imageUrl: generatedImageUrl,
+                                  useHighQuality: true 
+                                });
+                              }
+                            }}
                           >
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />

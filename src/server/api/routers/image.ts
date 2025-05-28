@@ -78,59 +78,58 @@ async function saveImages(buffer: Buffer, basename: string): Promise<{ jpegUrl: 
 
 export const imageRouter = createTRPCRouter({
   generate: publicProcedure
-    .input(z.object({ prompt: z.string().min(1) }))
+    .input(z.object({ 
+      prompt: z.string().min(1),
+      model: z.enum(["gpt-image-1", "dall-e-3", "dall-e-2"]).default("gpt-image-1"),
+      quality: z.enum(["standard", "hd"]).default("standard"),
+      style: z.enum(["vivid", "natural"]).default("vivid"),
+      size: z.enum(["1024x1024", "1024x1536", "1536x1024", "auto"]).default("1024x1024"),
+    }))
     .mutation(async ({ input }) => {
       try {
         // Sanitize the prompt
         const safePrompt = sanitizePrompt(input.prompt);
         
         console.log(`Processing image generation for prompt: ${safePrompt}`);
+        console.log(`Using model: ${input.model}, size: ${input.size}`);
         
         let response;
         let imageUrl;
         
-        // Try with gpt-image-1 first
-        try {
-          console.log(`Calling OpenAI with model: gpt-image-1, prompt: ${safePrompt.substring(0, 50)}...`);
-          
-          response = await openai.images.generate({
-            model: "gpt-image-1",
-            prompt: safePrompt,
-            n: 1,
-            size: "1024x1024", // Use supported size
-            quality: "auto",
-          });
-          
-          console.log("OpenAI API Response:", JSON.stringify(response, null, 2));
-          
-          if (response.data && response.data.length > 0) {
-            const firstResult = response.data[0];
+        // Try gpt-image-1 first (latest model)
+        if (input.model === "gpt-image-1") {
+          try {
+            console.log(`Calling OpenAI with GPT-Image-1, prompt: ${safePrompt.substring(0, 50)}...`);
             
-            if (typeof firstResult === 'object' && firstResult !== null) {
-              // Using type assertion to access potential properties safely
-              const resultObj = firstResult as Record<string, any>;
+            response = await openai.images.generate({
+              model: "gpt-image-1",
+              prompt: safePrompt,
+              n: 1,
+              size: input.size === "auto" ? "1024x1024" : input.size, // gpt-image-1 supports auto, but we'll default to 1024x1024
+              // Note: gpt-image-1 doesn't support quality or style parameters
+              // response_format defaults to b64_json for gpt-image-1
+            });
+            
+            console.log("GPT-Image-1 API Response:", JSON.stringify(response, null, 2));
+            
+            if (response.data && response.data.length > 0) {
+              const firstResult = response.data[0];
               
-              // Check for URL format
-              if (resultObj.url) {
-                imageUrl = resultObj.url;
-                console.log("Found URL in response:", imageUrl);
-              } 
-              // Check for b64_json format
-              else if (resultObj.b64_json) {
-                console.log("Found base64 image in response, converting to file...");
-                // Create image from base64 data directly
-                try {
+              if (typeof firstResult === 'object' && firstResult !== null) {
+                const resultObj = firstResult as Record<string, any>;
+                
+                // gpt-image-1 returns b64_json format
+                if (resultObj.b64_json) {
+                  console.log("Found base64 image in response, converting to file...");
                   const buffer = Buffer.from(resultObj.b64_json, 'base64');
                   
                   // Check if we're in Vercel environment
                   const isVercel = process.env.VERCEL === '1';
                   
                   if (isVercel) {
-                    // In Vercel: We don't want to save the base64 image to a file
-                    // Instead, we'll create a data URL that can be used directly
+                    // In Vercel: Create a data URL
                     console.log("Running in Vercel environment - creating data URL from base64");
-                    const format = "jpeg"; // Default to JPEG format for base64 images
-                    const dataUrl = `data:image/${format};base64,${resultObj.b64_json}`;
+                    const dataUrl = `data:image/png;base64,${resultObj.b64_json}`;
                     console.log("Created data URL for Vercel environment");
                     
                     return {
@@ -147,46 +146,60 @@ export const imageRouter = createTRPCRouter({
                       filePath: tiffPath, // Return TIFF path for high-quality printing
                     };
                   }
-                } catch (b64Error) {
-                  console.error("Error processing base64 image:", b64Error);
                 }
               }
             }
+          } catch (err) {
+            console.error("Error with gpt-image-1:", err);
+            console.log("Falling back to DALL-E 3...");
           }
-        } catch (err) {
-          console.error("Error with gpt-image-1:", err);
         }
         
-        // Fallback to dall-e-3 if gpt-image-1 fails
-        if (!imageUrl) {
-          console.log("Falling back to dall-e-3 model...");
+        // Use DALL-E 3 or DALL-E 2 (fallback or direct selection)
+        if (input.model === "dall-e-3" || !imageUrl) {
+          console.log(`Calling OpenAI with DALL-E 3, prompt: ${safePrompt.substring(0, 50)}...`);
           
           response = await openai.images.generate({
             model: "dall-e-3",
             prompt: safePrompt,
             n: 1,
-            size: "1024x1024", // Use supported size
+            size: "1024x1024", // DALL-E 3 supports 1024x1024, 1024x1792, 1792x1024
+            quality: input.quality,
+            style: input.style,
             response_format: "url",
           });
+        } else if (input.model === "dall-e-2") {
+          console.log(`Calling OpenAI with DALL-E 2, prompt: ${safePrompt.substring(0, 50)}...`);
           
-          console.log("dall-e-3 Response:", JSON.stringify(response, null, 2));
+          response = await openai.images.generate({
+            model: "dall-e-2",
+            prompt: safePrompt,
+            n: 1,
+            size: "1024x1024",
+            response_format: "url",
+          });
+        }
+        
+        // Only process response if it exists and we don't already have an imageUrl from gpt-image-1
+        if (response && !imageUrl) {
+          console.log("OpenAI API Response:", JSON.stringify(response, null, 2));
           
           if (response.data && response.data.length > 0) {
             imageUrl = response.data[0]?.url;
-            console.log("dall-e-3 image URL:", imageUrl);
+            console.log(`${input.model} image URL:`, imageUrl);
           }
         }
         
         if (!imageUrl) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to generate image: No URL returned from either model",
+            message: `Failed to generate image: No URL returned from ${input.model}`,
           });
         }
 
         console.log("Successfully obtained image URL:", imageUrl);
 
-        // Fetch the image and save it locally
+        // Fetch the image and save it locally (for DALL-E models that return URLs)
         try {
           const imageResponse = await fetch(imageUrl);
           
