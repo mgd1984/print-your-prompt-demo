@@ -115,11 +115,19 @@ export default function EnhancedImageGenerator({
       setGeneratedImage(data.imageUrl);
       onImageGenerated?.(data.imageUrl);
       
-      // If we generated from a selected prompt, update it with the image
+      // Always save the generated image to the database
       if (selectedPrompt) {
+        // Update existing prompt with the image
         updatePromptImageMutation.mutate({
           promptId: selectedPrompt.id,
           imageUrl: data.imageUrl
+        });
+      } else {
+        // Create a new prompt record for custom prompts
+        createPromptWithImageMutation.mutate({
+          text: prompt.trim(),
+          imageUrl: data.imageUrl,
+          username: null // Anonymous for now
         });
       }
     },
@@ -162,6 +170,18 @@ export default function EnhancedImageGenerator({
     },
     onError: (error) => {
       console.error("Failed to update prompt with image:", error);
+    }
+  });
+
+  // Create a new prompt with image
+  const createPromptWithImageMutation = api.prompt.createPromptWithImage.useMutation({
+    onSuccess: () => {
+      console.log("New prompt created with image URL");
+      promptsQuery.refetch();
+      galleryQuery.refetch();
+    },
+    onError: (error: TRPCClientErrorLike<AppRouter>) => {
+      console.error("Failed to create new prompt with image:", error);
     }
   });
 

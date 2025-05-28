@@ -345,4 +345,48 @@ export const promptRouter = createTRPCRouter({
         });
       }
     }),
+
+  // Create a new prompt with an image URL (for custom prompts)
+  createPromptWithImage: publicProcedure
+    .input(z.object({
+      text: z.string().min(1).max(500),
+      imageUrl: z.string().min(1),
+      username: z.string().max(50).optional().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { text, imageUrl, username } = input;
+      
+      console.log("Creating new prompt with image:", text, imageUrl);
+      
+      try {
+        // Insert new prompt with image URL and completed status
+        const result = await ctx.db.insert(prompts).values({
+          text: text,
+          username: username,
+          imageUrl: imageUrl,
+          status: "completed", // Mark as completed since it already has an image
+          createdAt: new Date(),
+        }).returning({ insertedId: prompts.id, insertedUrl: prompts.imageUrl });
+        
+        console.log("Create result:", result);
+        
+        if (!result[0]) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create prompt with image",
+          });
+        }
+        
+        return { 
+          success: true, 
+          createdPrompt: result[0] 
+        };
+      } catch (error) {
+        console.error("Database error during prompt creation:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to create prompt: ${(error as Error).message}`,
+        });
+      }
+    }),
 }); 
