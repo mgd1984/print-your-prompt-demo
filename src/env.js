@@ -30,6 +30,9 @@ export const env = createEnv({
     // Optional: Local CUPS authentication
     CUPS_USER: z.string().optional(),
     CUPS_PASSWORD: z.string().optional(),
+    
+    // Admin authentication
+    ADMIN_PASSWORD: z.string().min(1).optional(),
   },
 
   /**
@@ -57,6 +60,7 @@ export const env = createEnv({
     PRINT_SERVER_TOKEN: process.env.PRINT_SERVER_TOKEN,
     CUPS_USER: process.env.CUPS_USER,
     CUPS_PASSWORD: process.env.CUPS_PASSWORD,
+    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
   },
   /**
    * Run `build` or `dev` with SKIP_ENV_VALIDATION to skip env validation. This is especially

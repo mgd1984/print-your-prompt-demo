@@ -16,13 +16,34 @@ const config = {
   },
   // Exclude the printServer directory from the build
   transpilePackages: [],
-  experimental: {},
+  // Move serverComponentsExternalPackages to the correct location
+  serverExternalPackages: ["node-cups"],
+  // Ensure environment variables are available to middleware
+  env: {
+    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+  },
   // Exclude printServer from webpack compilation
   webpack: (config, { isServer }) => {
     // Exclude the printServer directory from webpack compilation
     config.externals = [...(config.externals || []), 'printServer'];
     
+    if (isServer) {
+      config.externals.push({
+        'node-cups': 'commonjs node-cups'
+      });
+    }
     return config;
+  },
+  // Image optimization settings
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'oaidalleapiprodscus.blob.core.windows.net',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
 };
 

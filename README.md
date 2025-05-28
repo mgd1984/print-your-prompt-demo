@@ -54,7 +54,7 @@ If you encounter "printer in use" errors with precision color sensors:
 3. **Force Print Mode**: Fallback to basic settings that bypass sensor dependencies
 4. **Job Monitoring**: Automatic detection and clearing of stuck print jobs
 
-## Usage During a Presentation
+## Usage
 
 **Important**: You'll need to get your Supabase database password from the Supabase dashboard at https://supabase.com/dashboard/project/qslbjmfdkmyubqdowmjd/settings/database
 
@@ -64,6 +64,22 @@ If you encounter "printer in use" errors with precision color sensors:
 4. Start a voting session from the admin panel
 5. Once voting completes, generate an image from the winning prompt
 6. Print the result directly to your Canon PRO-1000 printer via USB
+
+## Admin Authentication
+
+The admin panel at `/admin` is protected by password authentication:
+
+- **Setup**: Set `ADMIN_PASSWORD` in your `.env` file to enable protection
+- **Access**: Navigate to `/admin` - you'll be redirected to a login page
+- **Login**: Enter your admin password to access the control panel
+- **Session**: Authentication persists for 7 days via secure HTTP-only cookies
+- **Logout**: Click the "Logout" button in the admin panel to end your session
+
+**Security Notes:**
+- If `ADMIN_PASSWORD` is not set, the admin panel will be accessible without authentication (development mode)
+- Use a strong password for production deployments
+- The authentication cookie is HTTP-only and secure in production
+- Sessions automatically expire after 7 days
 
 ## Tech Stack
 
@@ -95,6 +111,9 @@ PRINT_SERVER_TOKEN="your-secret-token"              # Optional: for print server
 # Optional: Local CUPS authentication
 CUPS_USER="your_cups_user"
 CUPS_PASSWORD="your_cups_password"
+
+# Admin authentication (set a strong password to protect the admin panel)
+ADMIN_PASSWORD="your_secure_admin_password"
 ```
 
 **Environment-specific setup:**

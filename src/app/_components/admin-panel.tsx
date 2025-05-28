@@ -179,27 +179,27 @@ export default function AdminPanel() {
   const sortedPrompts = [...promptList].sort((a, b) => b.votes - a.votes);
   
   return (
-    <div className="grid grid-cols-1 gap-4">
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-[#e5e7eb]">
-        <div className="p-4 border-b border-[#e5e7eb]">
-          <h3 className="text-lg font-semibold text-[#1e3a8a]">Session Control</h3>
+    <div className="grid grid-cols-1 gap-6">
+      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg overflow-hidden">
+        <div className="p-6 border-b border-white/10">
+          <h3 className="text-lg font-semibold text-white">Session Control</h3>
         </div>
         
-        <div className="p-4">
+        <div className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h4 className="text-base font-medium text-[#1e3a8a]">Voting Session</h4>
-              <p className="text-sm text-[#3b82f6]/80">
+              <h4 className="text-base font-medium text-white">Voting Session</h4>
+              <p className="text-sm text-slate-300">
                 {countdown !== null
                   ? `Running - ${countdown}s remaining`
                   : "Not running"}
               </p>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 onClick={handleStartSession}
-                className="rounded-md bg-[#4caf50] px-4 py-2 font-medium text-white hover:bg-[#43a047] disabled:opacity-50 text-sm transition-colors"
+                className="rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-4 py-2 font-medium text-white disabled:opacity-50 text-sm transition-all duration-200 shadow-lg"
                 disabled={countdown !== null}
               >
                 Start New Session
@@ -207,7 +207,7 @@ export default function AdminPanel() {
               
               <button
                 onClick={handleEndSession}
-                className="rounded-md bg-[#f44336] px-4 py-2 font-medium text-white hover:bg-[#e53935] disabled:opacity-50 text-sm transition-colors"
+                className="rounded-lg bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 px-4 py-2 font-medium text-white disabled:opacity-50 text-sm transition-all duration-200 shadow-lg"
                 disabled={countdown === null}
               >
                 End Session
@@ -218,51 +218,54 @@ export default function AdminPanel() {
           <div className="mt-4">
             <Link 
               href="/live" 
-              className="text-[#4285f4] hover:text-[#1e3a8a] transition-colors text-sm"
+              className="text-blue-400 hover:text-blue-300 transition-colors text-sm inline-flex items-center space-x-2"
               target="_blank"
             >
-              Open voting page (public URL)
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              <span>Open voting page (public URL)</span>
             </Link>
           </div>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-[#e5e7eb]">
-          <div className="p-4 border-b border-[#e5e7eb]">
-            <h3 className="text-lg font-semibold text-[#1e3a8a]">All Prompts</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg overflow-hidden">
+          <div className="p-6 border-b border-white/10">
+            <h3 className="text-lg font-semibold text-white">All Prompts</h3>
           </div>
           
-          <div className="p-4">
+          <div className="p-6">
             {countdown === null && promptList.length > 0 && (
-              <div className="mb-3 bg-[#f0f7ff] border border-[#4285f4]/30 rounded-md p-2">
-                <p className="text-sm text-[#3b82f6]">Session not active. Select a prompt to generate an image.</p>
+              <div className="mb-4 bg-blue-500/10 border border-blue-400/30 rounded-lg p-3">
+                <p className="text-sm text-blue-300">Session not active. Select a prompt to generate an image.</p>
               </div>
             )}
             
             {promptsQuery.isLoading ? (
-              <p className="text-[#3b82f6]/80 text-center py-4">Loading prompts...</p>
+              <p className="text-slate-300 text-center py-8">Loading prompts...</p>
             ) : sortedPrompts.length === 0 ? (
-              <p className="text-[#3b82f6]/80 text-center py-4">
+              <p className="text-slate-300 text-center py-8">
                 {hasActiveSession 
                   ? "No prompts submitted yet in this session." 
                   : "No prompts available. Start a new session to collect prompts."}
               </p>
             ) : (
               <div className="max-h-96 overflow-y-auto pr-2">
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {sortedPrompts.map((prompt) => (
                     <li 
                       key={prompt.id} 
-                      className={`flex justify-between items-center p-3 rounded-md border ${
+                      className={`flex justify-between items-center p-4 rounded-lg border transition-all duration-200 cursor-pointer ${
                         selectedPrompt?.id === prompt.id
-                          ? "border-[#4285f4] bg-[#f0f7ff]"
-                          : "border-[#e5e7eb] bg-[#f8fafc] hover:border-[#4285f4]/40 hover:bg-[#f0f7ff]"
-                      } cursor-pointer transition-colors`}
+                          ? "border-blue-400/50 bg-blue-500/10 shadow-lg"
+                          : "border-white/10 bg-white/5 hover:border-blue-400/30 hover:bg-blue-500/5"
+                      }`}
                       onClick={() => setSelectedPrompt(prompt)}
                     >
-                      <span className="text-sm text-[#1e3a8a] mr-2">{prompt.text}</span>
-                      <span className="bg-[#4285f4]/10 text-[#4285f4] px-2 py-1 rounded text-xs font-medium">
+                      <span className="text-sm text-white mr-3 flex-1">{prompt.text}</span>
+                      <span className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-xs font-medium border border-blue-400/30">
                         {prompt.votes} vote{prompt.votes !== 1 ? "s" : ""}
                       </span>
                     </li>
@@ -273,30 +276,37 @@ export default function AdminPanel() {
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-[#e5e7eb]">
-          <div className="p-4 border-b border-[#e5e7eb]">
-            <h3 className="text-lg font-semibold text-[#1e3a8a]">Image Generation</h3>
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg overflow-hidden">
+          <div className="p-6 border-b border-white/10">
+            <h3 className="text-lg font-semibold text-white">Image Generation</h3>
           </div>
           
-          <div className="p-4">
+          <div className="p-6">
             {selectedPrompt ? (
               <div className="flex flex-col gap-4">
-                <div className="bg-[#f8fafc] p-3 rounded-md border border-[#e5e7eb]">
-                  <h4 className="text-sm font-medium text-[#1e3a8a] mb-1">Selected Prompt:</h4>
-                  <p className="text-[#4285f4]">{selectedPrompt.text}</p>
+                <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                  <h4 className="text-sm font-medium text-slate-300 mb-2">Selected Prompt:</h4>
+                  <p className="text-white">{selectedPrompt.text}</p>
                 </div>
                 
                 <button
                   onClick={handleGenerateImage}
-                  className="w-full py-2 bg-[#4285f4] hover:bg-[#3b7bf2] text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                   disabled={generatingImage}
                 >
-                  {generatingImage ? "Generating..." : "Generate Image"}
+                  {generatingImage ? (
+                    <span className="flex items-center justify-center space-x-2">
+                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Generating...</span>
+                    </span>
+                  ) : "Generate Image"}
                 </button>
                 
                 {imageSrc && (
                   <div className="flex flex-col gap-4 mt-2">
-                    <div className="relative w-full aspect-square border border-[#e5e7eb] rounded-md overflow-hidden bg-[#f8fafc]">
+                    <div className="relative w-full aspect-square border border-white/10 rounded-lg overflow-hidden bg-white/5">
                       <Image
                         src={imageSrc}
                         alt="Generated image"
@@ -305,33 +315,40 @@ export default function AdminPanel() {
                       />
                     </div>
                     
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-3">
                       <div className="flex items-center">
                         <input
                           type="checkbox"
                           id="high-quality"
                           checked={useHighQuality}
                           onChange={() => setUseHighQuality(!useHighQuality)}
-                          className="mr-2 h-4 w-4 rounded border-[#e5e7eb] text-[#4285f4] focus:ring-[#4285f4]"
+                          className="mr-3 h-4 w-4 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
                         />
-                        <label htmlFor="high-quality" className="text-sm text-[#1e3a8a]">
+                        <label htmlFor="high-quality" className="text-sm text-slate-300">
                           Use high-quality printing
                         </label>
                       </div>
                       
                       <button
                         onClick={handlePrintImage}
-                        className="w-full py-2 bg-[#4285f4] hover:bg-[#3b7bf2] text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                         disabled={isPrinting}
                       >
-                        {isPrinting ? "Printing..." : "Print Image"}
+                        {isPrinting ? (
+                          <span className="flex items-center justify-center space-x-2">
+                            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2 2v6a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <span>Printing...</span>
+                          </span>
+                        ) : "Print Image"}
                       </button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-[#3b82f6]/80 text-center py-8">
+              <p className="text-slate-300 text-center py-12">
                 Select a prompt from the list to generate an image
               </p>
             )}

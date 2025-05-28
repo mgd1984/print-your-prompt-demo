@@ -1,3 +1,7 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import AdminPanel from "@/app/_components/admin-panel";
 import { QRCodeDisplay } from "@/app/_components/qr-code";
 import { Avatar } from "@/components/ui/avatar";
@@ -6,298 +10,490 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export default function AdminPage() {
-  return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Top navigation bar */}
-      <nav className="bg-white border-b border-slate-200 px-6 py-3 shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <svg className="w-8 h-8 text-indigo-600" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 21C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H17C18.1046 3 19 3.89543 19 5V19C19 20.1046 18.1046 21 17 21H7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M9 7H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M9 11H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M9 15H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <h1 className="text-xl font-semibold text-slate-800">Print Your Prompt <span className="text-indigo-600">Admin</span></h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/" className="flex items-center">
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                </svg>
-                Home
-              </Link>
-            </Button>
-            <div className="h-6 w-px bg-slate-300"></div>
-            <Button variant="ghost" size="sm" className="flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [activePanel, setActivePanel] = useState<'overview' | 'prompts' | 'settings' | 'analytics'>('overview');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [liveStreamMuted, setLiveStreamMuted] = useState(false);
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/admin/auth', {
+          method: 'GET',
+        });
+        
+        if (response.ok) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+          router.push('/admin/login');
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsAuthenticated(false);
+        router.push('/admin/login');
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/auth', {
+        method: 'DELETE',
+      });
+      router.push('/admin/login');
+      router.refresh();
+    } catch (error) {
+      console.error('Logout error:', error);
+      router.push('/admin/login');
+      router.refresh();
+    }
+  };
+
+  // Show loading state while checking authentication
+  if (isAuthenticated === null) {
+    return (
+      <main className="min-h-screen bg-slate-900 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-purple-100/40 to-pink-100/40 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+        
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <svg className="w-8 h-8 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Logout
-            </Button>
+            </div>
+            <p className="text-slate-600 text-lg">Verifying access...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // If not authenticated, don't render the admin content
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-900 overflow-hidden">
+
+      {/* Top Navigation Bar */}
+      <nav className="relative z-50 border-b border-white/10 bg-black/20 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            {/* Logo & Brand */}
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">Print Your Prompt</h1>
+                <p className="text-xs text-slate-400">Admin Control Center</p>
+              </div>
+            </div>
+
+            {/* Status Indicators */}
+            <div className="hidden md:flex items-center space-x-6">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm text-slate-300">System Online</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                <span className="text-sm text-slate-300">Live Stream</span>
+              </div>
+            </div>
+
+            {/* Navigation & Controls */}
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowQR(!showQR)}
+                className="text-slate-300 hover:text-white hover:bg-white/10"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+                QR Code
+              </Button>
+              
+              <Link href="/" className="text-slate-300 hover:text-white transition-colors">
+                <Button variant="ghost" size="sm" className="hover:bg-white/10">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Exit
+                </Button>
+              </Link>
+              
+              <Button 
+                onClick={handleLogout}
+                variant="ghost" 
+                size="sm"
+                className="text-red-300 hover:text-red-200 hover:bg-red-500/10"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* Main content container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        {/* Dashboard grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Status card */}
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle>System Status</CardTitle>
-                <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
-                  Online
-                </Badge>
+      {/* Main Dashboard Layout */}
+      <div className="relative z-10 flex h-[calc(100vh-80px)]">
+        
+        {/* Left Sidebar - Control Panel */}
+        <div className="w-80 border-r border-white/10 bg-black/20 backdrop-blur-xl overflow-y-auto">
+          <div className="p-6 space-y-6">
+            
+            {/* Panel Navigation */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Control Panels</h3>
+              <div className="space-y-1">
+                {[
+                  { id: 'overview', label: 'Overview', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                  { id: 'prompts', label: 'Prompt Management', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                  { id: 'analytics', label: 'Analytics', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+                  { id: 'settings', label: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
+                ].map((panel) => (
+                  <button
+                    key={panel.id}
+                    onClick={() => setActivePanel(panel.id as any)}
+                    className={cn(
+                      "w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200",
+                      activePanel === panel.id 
+                        ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-white border border-blue-500/30" 
+                        : "text-slate-300 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={panel.icon} />
+                    </svg>
+                    <span className="font-medium">{panel.label}</span>
+                  </button>
+                ))}
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Printer Connection</span>
-                <span className="flex items-center text-green-600">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                  </svg>
-                  Connected
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">OpenAI API</span>
-                <span className="flex items-center text-green-600">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                  </svg>
-                  Active
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Database</span>
-                <span className="flex items-center text-green-600">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                  </svg>
-                  Connected
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* QR Code card */}
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle>QR Code</CardTitle>
-                <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-800">
-                  Download
+            {/* Quick Actions */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Quick Actions</h3>
+              <div className="space-y-2">
+                <Button className="w-full justify-start bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-lg">
+                  <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Test Print
+                </Button>
+                
+                <Button variant="ghost" className="w-full justify-start bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-slate-300 hover:text-white transition-all duration-200">
+                  <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset Session
+                </Button>
+                
+                <Link href="/gallery">
+                  <Button variant="ghost" className="w-full justify-start bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-slate-300 hover:text-white transition-all duration-200">
+                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    View Gallery
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Live Stream Controls */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Stream Controls</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">Audio</span>
+                  <Switch 
+                    checked={!liveStreamMuted} 
+                    onCheckedChange={(checked: boolean) => setLiveStreamMuted(!checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">Fullscreen Mode</span>
+                  <Switch 
+                    checked={isFullscreen} 
+                    onCheckedChange={setIsFullscreen}
+                  />
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-slate-300 hover:text-white transition-all duration-200"
+                  onClick={() => window.open('https://vdo.ninja/?push&room=sinceseem9&password=05222025', '_blank')}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Send Video
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center">
-              <div className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col">
+          
+          {/* Live Video Feed - Prominent Display */}
+          <div className={cn(
+            "relative bg-black border-b border-white/10 transition-all duration-300",
+            isFullscreen ? "flex-1" : "h-80"
+          )}>
+            <iframe
+              src="https://vdo.ninja/?scene&room=sinceseem9&password=05222025"
+              className="w-full h-full"
+              allow="camera; microphone; fullscreen"
+              title="PrintCam Live Stream"
+              frameBorder={0}
+            />
+            
+            {/* Video Overlay Controls */}
+            <div className="absolute top-4 right-4 flex space-x-2">
+              <Badge className="bg-red-500/90 text-white border-red-400">
+                <span className="w-2 h-2 mr-2 rounded-full bg-white animate-pulse"></span>
+                LIVE
+              </Badge>
+              <Button 
+                size="sm" 
+                variant="secondary"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="bg-black/50 hover:bg-black/70 text-white border-white/20"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isFullscreen ? "M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5" : "M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"} />
+                </svg>
+              </Button>
+            </div>
+
+            {/* Video Info Overlay */}
+            <div className="absolute bottom-4 left-4">
+              <div className="bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-white">
+                <p className="text-sm font-medium">PrintCam Live</p>
+                <p className="text-xs text-slate-300">Room: sinceseem9</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Control Panel Content */}
+          {!isFullscreen && (
+            <div className="flex-1 p-6 overflow-y-auto">
+              {activePanel === 'overview' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-slate-400">Active Sessions</p>
+                            <p className="text-3xl font-bold text-white">1</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-xl flex items-center justify-center">
+                            <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-slate-400">Total Prompts</p>
+                            <p className="text-3xl font-bold text-white">24</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center">
+                            <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-slate-400">Images Generated</p>
+                            <p className="text-3xl font-bold text-white">8</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center">
+                            <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-white">System Status</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {[
+                        { name: 'Printer Connection', status: 'Connected', color: 'green' },
+                        { name: 'OpenAI API', status: 'Active', color: 'green' },
+                        { name: 'Database', status: 'Connected', color: 'green' },
+                        { name: 'Live Stream', status: 'Broadcasting', color: 'red' }
+                      ].map((item) => (
+                        <div key={item.name} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                          <span className="text-slate-300">{item.name}</span>
+                          <div className="flex items-center space-x-2">
+                            <div className={cn(
+                              "w-2 h-2 rounded-full animate-pulse",
+                              item.color === 'green' ? 'bg-green-400' : 'bg-red-400'
+                            )}></div>
+                            <span className={cn(
+                              "text-sm font-medium",
+                              item.color === 'green' ? 'text-green-400' : 'text-red-400'
+                            )}>{item.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {activePanel === 'prompts' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-white">Prompt Management</h2>
+                  </div>
+                  <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                    <CardContent className="p-6">
+                      <AdminPanel />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {activePanel === 'analytics' && (
+                <div className="space-y-6">
+                  <h2 className="text-2xl font-bold text-white">Analytics Dashboard</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                      <CardHeader>
+                        <CardTitle className="text-white">Session Activity</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-40 flex items-center justify-center text-slate-400">
+                          <p>Activity chart would go here</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                      <CardHeader>
+                        <CardTitle className="text-white">Popular Prompts</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-40 flex items-center justify-center text-slate-400">
+                          <p>Popular prompts list would go here</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'settings' && (
+                <div className="space-y-6">
+                  <h2 className="text-2xl font-bold text-white">System Settings</h2>
+                  <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-white">Configuration</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Auto-print enabled</span>
+                        <Switch />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Session timeout (minutes)</span>
+                        <input 
+                          type="number" 
+                          defaultValue="30" 
+                          className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300">Max prompts per session</span>
+                        <input 
+                          type="number" 
+                          defaultValue="10" 
+                          className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* QR Code Modal */}
+      {showQR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-8 max-w-sm mx-4">
+            <div className="text-center space-y-4">
+              <h3 className="text-xl font-bold text-white">Session Access</h3>
+              <div className="bg-white p-4 rounded-xl">
                 <QRCodeDisplay 
-                  size={150} 
+                  size={200} 
                   showNetworkInfo={true}
                   networkName={process.env.NEXT_PUBLIC_WIFI_NAME || "iPhone-Hotspot"}
                   networkPassword={process.env.NEXT_PUBLIC_WIFI_PASSWORD || "demopass"}
                 />
               </div>
-              <div className="mt-4 text-center">
-                <p className="text-slate-600 text-sm">Scan to access the app</p>
-                <p className="text-slate-500 text-xs mt-1">
-                  WiFi: <span className="font-medium">{process.env.NEXT_PUBLIC_WIFI_NAME || "iPhone-Hotspot"}</span>
+              <div className="text-center">
+                <p className="text-slate-300">Scan to join the session</p>
+                <p className="text-sm text-slate-400">
+                  WiFi: <span className="text-white font-medium">{process.env.NEXT_PUBLIC_WIFI_NAME || "iPhone-Hotspot"}</span>
                 </p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick actions card */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  variant="outline" 
-                  className="h-auto py-4 flex flex-col items-center justify-center"
-                >
-                  <svg className="w-6 h-6 text-indigo-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                  </svg>
-                  <span className="text-sm font-medium text-slate-700">Test Print</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="h-auto py-4 flex flex-col items-center justify-center"
-                >
-                  <svg className="w-6 h-6 text-indigo-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                  </svg>
-                  <span className="text-sm font-medium text-slate-700">New Prompt</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="h-auto py-4 flex flex-col items-center justify-center"
-                >
-                  <svg className="w-6 h-6 text-indigo-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
-                  </svg>
-                  <span className="text-sm font-medium text-slate-700">Settings</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="h-auto py-4 flex flex-col items-center justify-center"
-                >
-                  <svg className="w-6 h-6 text-indigo-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                  </svg>
-                  <span className="text-sm font-medium text-slate-700">Export Data</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Admin panel and camera feed section */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-6">
-          {/* Admin panel */}
-          <Card className="lg:col-span-3">
-            <CardHeader className="border-b pb-3 bg-slate-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
-                  </svg>
-                  <CardTitle>Prompt Management</CardTitle>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" className="flex items-center h-8">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-                    </svg>
-                    Filter
-                  </Button>
-                  <Button size="sm" className="flex items-center h-8">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    New Prompt
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Tabs defaultValue="session" className="w-full">
-                <TabsList className="w-full justify-start px-4 py-2 border-b bg-slate-50">
-                  <TabsTrigger value="session">Session Control</TabsTrigger>
-                  <TabsTrigger value="prompts">All Prompts</TabsTrigger>
-                  <TabsTrigger value="generation">Image Generation</TabsTrigger>
-                </TabsList>
-                <TabsContent value="session" className="p-4 m-0 border-0">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-800">Voting Session</h3>
-                      <p className="text-sm text-slate-500">Not running</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <Button className="bg-green-500 hover:bg-green-600">Start New Session</Button>
-                      <Button variant="outline" className="text-red-500 border-red-200 hover:bg-red-50">End Session</Button>
-                    </div>
-                    <div className="pt-4">
-                      <Button variant="link" className="p-0 h-auto text-indigo-600">
-                        Open voting page (public URL)
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="prompts" className="p-0 m-0 border-0">
-                  <AdminPanel />
-                </TabsContent>
-                <TabsContent value="generation" className="p-4 m-0 border-0">
-                  <div className="flex justify-end mb-4">
-                    <Button variant="outline">Microsoft Excel</Button>
-                  </div>
-                  <p className="text-slate-500 text-center py-8">No generated images yet</p>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          {/* Camera feed */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="border-b pb-3 bg-slate-50">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                  </svg>
-                  <CardTitle>PrintCam Live</CardTitle>
-                </div>
-                <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
-                  <span className="w-2 h-2 mr-1 rounded-full bg-red-600 animate-pulse"></span>
-                  Live
-                </Badge>
-              </div>
-            </CardHeader>
-            <div className="bg-slate-900 p-0">
-              <iframe
-                src="https://vdo.ninja/?scene&room=sinceseem9&password=05222025"
-                className="w-full aspect-video"
-                allow="camera; microphone; fullscreen"
-                title="PrintCam Live Stream"
-                frameBorder={0}
-              ></iframe>
+              <Button 
+                onClick={() => setShowQR(false)}
+                className="w-full bg-white/20 hover:bg-white/30 text-white border border-white/30"
+              >
+                Close
+              </Button>
             </div>
-            <CardFooter className="p-3 bg-slate-50 border-t flex justify-between items-center">
-              <div className="text-xs text-slate-500">Stream ID: printcam</div>
-              <div className="flex space-x-2">
-                <Button variant="outline" size="icon" className="w-8 h-8 rounded-full p-0">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 001.414 1.414m2.828-4.242a1 1 0 010 1.414m2.828-2.828a1 1 0 010-1.414"></path>
-                  </svg>
-                </Button>
-                <Button variant="outline" size="icon" className="w-8 h-8 rounded-full p-0">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
-                  </svg>
-                </Button>
-                <Button variant="destructive" size="icon" className="w-8 h-8 rounded-full p-0 bg-red-500 hover:bg-red-600">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
-                </Button>
-              </div>
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 mt-12 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center">
-          <div className="text-sm text-slate-500 mb-4 sm:mb-0">
-            © {new Date().getFullYear()} Print Your Prompt. All rights reserved.
-          </div>
-          <div className="flex space-x-6">
-            <Button asChild variant="link" className="text-sm text-slate-500 h-auto p-0">
-              <Link href="/gallery">Gallery</Link>
-            </Button>
-            <Button asChild variant="link" className="text-sm text-slate-500 h-auto p-0">
-              <Link href="/live">Live View</Link>
-            </Button>
-            <Button asChild variant="link" className="text-sm text-slate-500 h-auto p-0">
-              <a href="#">Help</a>
-            </Button>
           </div>
         </div>
-      </footer>
+      )}
     </main>
   );
 } 
