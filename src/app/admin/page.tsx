@@ -13,14 +13,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { api } from "@/trpc/react";
 
 export default function AdminPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [activePanel, setActivePanel] = useState<'overview' | 'prompts' | 'settings' | 'analytics'>('overview');
+  const [activePanel, setActivePanel] = useState<'overview' | 'prompts' | 'settings' | 'analytics' | 'generation'>('overview');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [liveStreamMuted, setLiveStreamMuted] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [selectedPromptForGeneration, setSelectedPromptForGeneration] = useState<string | null>(null);
+
+  // Get all prompts for the Image Generation Studio
+  const promptsQuery = api.prompt.getAll.useQuery(
+    { seconds: 3600, limit: 100 },
+    { 
+      refetchInterval: 30000,
+      refetchIntervalInBackground: true,
+    }
+  );
 
   // Check authentication on component mount
   useEffect(() => {
@@ -62,12 +75,12 @@ export default function AdminPage() {
 
   // Show loading state while checking authentication
   if (isAuthenticated === null) {
-    return (
+  return (
       <main className="min-h-screen bg-slate-900 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-purple-100/40 to-pink-100/40 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        </div>
+          </div>
         
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
@@ -94,19 +107,19 @@ export default function AdminPage() {
       {/* Top Navigation Bar */}
       <nav className="relative z-50 border-b border-white/10 bg-black/20 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center">
             {/* Logo & Brand */}
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+                  </svg>
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white">Print Your Prompt</h1>
                 <p className="text-xs text-slate-400">Admin Control Center</p>
               </div>
-            </div>
+              </div>
 
             {/* Status Indicators */}
             <div className="hidden md:flex items-center space-x-6">
@@ -118,11 +131,11 @@ export default function AdminPage() {
                 <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
                 <span className="text-sm text-slate-300">Live Stream</span>
               </div>
-            </div>
+              </div>
 
             {/* Navigation & Controls */}
             <div className="flex items-center space-x-4">
-              <Button 
+                <Button 
                 variant="ghost" 
                 size="sm"
                 onClick={() => setShowQR(!showQR)}
@@ -143,7 +156,7 @@ export default function AdminPage() {
                 </Button>
               </Link>
               
-              <Button 
+                <Button 
                 onClick={handleLogout}
                 variant="ghost" 
                 size="sm"
@@ -173,6 +186,7 @@ export default function AdminPage() {
                 {[
                   { id: 'overview', label: 'Overview', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
                   { id: 'prompts', label: 'Prompt Management', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                  { id: 'generation', label: 'Image Generation', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
                   { id: 'analytics', label: 'Analytics', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
                   { id: 'settings', label: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
                 ].map((panel) => (
@@ -262,48 +276,53 @@ export default function AdminPage() {
         <div className="flex-1 flex flex-col">
           
           {/* Live Video Feed - Prominent Display */}
-          <div className={cn(
-            "relative bg-black border-b border-white/10 transition-all duration-300",
-            isFullscreen ? "flex-1" : "h-80"
-          )}>
-            <iframe
-              src="https://vdo.ninja/?scene&room=sinceseem9&password=05222025"
-              className="w-full h-full"
-              allow="camera; microphone; fullscreen"
-              title="PrintCam Live Stream"
-              frameBorder={0}
-            />
-            
-            {/* Video Overlay Controls */}
-            <div className="absolute top-4 right-4 flex space-x-2">
-              <Badge className="bg-red-500/90 text-white border-red-400">
-                <span className="w-2 h-2 mr-2 rounded-full bg-white animate-pulse"></span>
-                LIVE
-              </Badge>
-              <Button 
-                size="sm" 
-                variant="secondary"
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="bg-black/50 hover:bg-black/70 text-white border-white/20"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isFullscreen ? "M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5" : "M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"} />
-                </svg>
-              </Button>
-            </div>
+          {activePanel !== 'generation' && (
+            <div className={cn(
+              "relative bg-black border-b border-white/10 transition-all duration-300",
+              isFullscreen ? "flex-1" : "h-80"
+            )}>
+              <iframe
+                src="https://vdo.ninja/?scene&room=sinceseem9&password=05222025"
+                className="w-full h-full"
+                allow="camera; microphone; fullscreen"
+                title="PrintCam Live Stream"
+                frameBorder={0}
+              />
+              
+              {/* Video Overlay Controls */}
+              <div className="absolute top-4 right-4 flex space-x-2">
+                <Badge className="bg-red-500/90 text-white border-red-400">
+                  <span className="w-2 h-2 mr-2 rounded-full bg-white animate-pulse"></span>
+                  LIVE
+                </Badge>
+                <Button 
+                  size="sm" 
+                  variant="secondary"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  className="bg-black/50 hover:bg-black/70 text-white border-white/20"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isFullscreen ? "M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0-4.5l5.5 5.5" : "M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"} />
+                  </svg>
+                </Button>
+              </div>
 
-            {/* Video Info Overlay */}
-            <div className="absolute bottom-4 left-4">
-              <div className="bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-white">
-                <p className="text-sm font-medium">PrintCam Live</p>
-                <p className="text-xs text-slate-300">Room: sinceseem9</p>
+              {/* Video Info Overlay */}
+              <div className="absolute bottom-4 left-4">
+                <div className="bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-white">
+                  <p className="text-sm font-medium">PrintCam Live</p>
+                  <p className="text-xs text-slate-300">Room: sinceseem9</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Control Panel Content */}
           {!isFullscreen && (
-            <div className="flex-1 p-6 overflow-y-auto">
+            <div className={cn(
+              "flex-1 p-6 overflow-y-auto",
+              activePanel === 'generation' ? "h-[calc(100vh-80px)]" : ""
+            )}>
               {activePanel === 'overview' && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -342,16 +361,16 @@ export default function AdminPage() {
                     <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
-                          <div>
+                    <div>
                             <p className="text-sm text-slate-400">Images Generated</p>
                             <p className="text-3xl font-bold text-white">8</p>
-                          </div>
+                    </div>
                           <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center">
                             <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                          </div>
-                        </div>
+                    </div>
+                    </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -394,8 +413,289 @@ export default function AdminPage() {
                   <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
                     <CardContent className="p-6">
                       <AdminPanel />
-                    </CardContent>
-                  </Card>
+            </CardContent>
+          </Card>
+                </div>
+              )}
+
+              {activePanel === 'generation' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-white">Image Generation Studio</h2>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Canvas Area */}
+                    <div className="lg:col-span-2">
+                      <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                        <CardHeader>
+                          <CardTitle className="text-white flex items-center space-x-2">
+                            <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span>Creative Canvas</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <div className="relative aspect-square bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl border border-white/10 overflow-hidden">
+                            
+                            {/* Ready State - Static */}
+                            {!isGeneratingImage && !generatedImageUrl && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="text-center space-y-6">
+                                  {/* Static Icon */}
+                                  <div className="relative w-24 h-24 mx-auto">
+                                    <div className="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <svg className="w-12 h-12 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <h3 className="text-xl font-semibold text-white">Ready to Create</h3>
+                                    <p className="text-slate-300">Select a prompt to generate your masterpiece</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Generating State - Animated */}
+                            {isGeneratingImage && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="text-center space-y-6">
+                                  {/* Animated Circles */}
+                                  <div className="relative w-24 h-24 mx-auto">
+                                    <div className="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+                                    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-purple-500 animate-spin"></div>
+                                    <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-blue-500 animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}></div>
+                                    <div className="absolute inset-4 rounded-full border-4 border-transparent border-t-pink-500 animate-spin" style={{animationDuration: '2s'}}></div>
+                                    
+                                    {/* Center Icon */}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <svg className="w-8 h-8 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Loading Text */}
+                                  <div className="space-y-2">
+                                    <h3 className="text-xl font-semibold text-white">Creating Magic...</h3>
+                                    <p className="text-slate-300">AI is generating your image</p>
+                                    {selectedPromptForGeneration && (
+                                      <p className="text-sm text-purple-300 italic">"{selectedPromptForGeneration}"</p>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Floating Particles */}
+                                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                                    {[...Array(6)].map((_, i) => (
+                                      <div
+                                        key={i}
+                                        className="absolute w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full opacity-60 animate-bounce"
+                                        style={{
+                                          left: `${20 + i * 15}%`,
+                                          top: `${30 + (i % 2) * 40}%`,
+                                          animationDelay: `${i * 0.5}s`,
+                                          animationDuration: `${2 + i * 0.3}s`
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Generated Image State */}
+                            {generatedImageUrl && !isGeneratingImage && (
+                              <div className="absolute inset-0">
+                                <img 
+                                  src={generatedImageUrl} 
+                                  alt="Generated artwork" 
+                                  className="w-full h-full object-contain rounded-xl"
+                                />
+                                
+                                {/* Success Overlay - briefly shown */}
+                                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm opacity-0 transition-opacity duration-500 flex items-center justify-center">
+                                  <div className="text-center space-y-4">
+                                    <div className="w-16 h-16 mx-auto bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </div>
+                                    <p className="text-white font-medium">Image Generated Successfully!</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Canvas Controls */}
+                          <div className="mt-6 flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                                <span className="text-sm text-slate-300">Canvas Ready</span>
+                              </div>
+                              <div className="text-sm text-slate-400">1024×1024</div>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Download
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                                </svg>
+                                Share
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    
+                    {/* Generation Controls */}
+                    <div className="space-y-6">
+                      {/* Prompt Selection */}
+                      <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                        <CardHeader>
+                          <CardTitle className="text-white text-lg">Prompt Selection</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-3">
+                            <label className="text-sm font-medium text-slate-300">Choose a prompt to generate:</label>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {promptsQuery.isLoading ? (
+                                <div className="p-4 text-center text-slate-400">
+                                  Loading prompts...
+                                </div>
+                              ) : promptsQuery.data?.prompts && promptsQuery.data.prompts.length > 0 ? (
+                                [...promptsQuery.data.prompts]
+                                  .sort((a, b) => b.votes - a.votes)
+                                  .map((prompt) => (
+                                    <div 
+                                      key={prompt.id}
+                                      className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                                        selectedPromptForGeneration === prompt.text 
+                                          ? "border-purple-400/50 bg-purple-500/10" 
+                                          : "bg-white/5 border-white/10 hover:border-purple-400/50"
+                                      }`}
+                                      onClick={() => setSelectedPromptForGeneration(prompt.text)}
+                                    >
+                                      <p className="text-sm text-white">{prompt.text}</p>
+                                      <div className="flex items-center justify-between mt-2">
+                                        <span className="text-xs text-slate-400">{prompt.votes} vote{prompt.votes !== 1 ? 's' : ''}</span>
+                                        <div className={`w-2 h-2 rounded-full ${
+                                          prompt.votes >= 5 ? 'bg-green-400' : 
+                                          prompt.votes >= 3 ? 'bg-blue-400' : 
+                                          'bg-purple-400'
+                                        }`}></div>
+                                      </div>
+                                    </div>
+                                  ))
+                              ) : (
+                                <div className="p-4 text-center text-slate-400">
+                                  No prompts available. Start a voting session to collect prompts.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <Button 
+                            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg"
+                            onClick={() => {
+                              if (selectedPromptForGeneration) {
+                                setIsGeneratingImage(true);
+                                setGeneratedImageUrl(null);
+                                
+                                // Simulate image generation (replace with actual API call)
+                                setTimeout(() => {
+                                  setIsGeneratingImage(false);
+                                  setGeneratedImageUrl('/api/placeholder/400/400'); // Placeholder - replace with actual generated image
+                                }, 5000); // 5 second simulation
+                              }
+                            }}
+                            disabled={!selectedPromptForGeneration || isGeneratingImage}
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            {isGeneratingImage ? 'Generating...' : 'Generate Image'}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Generation Settings */}
+                      <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                        <CardHeader>
+                          <CardTitle className="text-white text-lg">Generation Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-sm font-medium text-slate-300 block mb-2">Quality</label>
+                              <select className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                <option value="standard">Standard</option>
+                                <option value="hd">HD Quality</option>
+                              </select>
+                            </div>
+                            
+                            <div>
+                              <label className="text-sm font-medium text-slate-300 block mb-2">Style</label>
+                              <select className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                <option value="vivid">Vivid</option>
+                                <option value="natural">Natural</option>
+                              </select>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-slate-300">Auto-print when ready</span>
+                              <Switch />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Print Controls */}
+                      <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
+                        <CardHeader>
+                          <CardTitle className="text-white text-lg">Print Controls</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <Button 
+                            variant="outline" 
+                            className={`w-full border-white/20 text-slate-300 hover:text-white hover:bg-white/5 ${
+                              generatedImageUrl ? 'hover:border-green-400/50 hover:bg-green-500/10' : ''
+                            }`}
+                            disabled={!generatedImageUrl}
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            Print Image
+                          </Button>
+                          
+                          <div className="text-center">
+                            <p className="text-xs text-slate-400">
+                              {isGeneratingImage 
+                                ? "Generating image..." 
+                                : generatedImageUrl 
+                                  ? "Ready to print!" 
+                                  : "Generate an image first"
+                              }
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -424,7 +724,7 @@ export default function AdminPage() {
                       </CardContent>
                     </Card>
                   </div>
-                </div>
+              </div>
               )}
 
               {activePanel === 'settings' && (
@@ -433,7 +733,7 @@ export default function AdminPage() {
                   <Card className="bg-white/5 backdrop-blur-xl border border-white/10">
                     <CardHeader>
                       <CardTitle className="text-white">Configuration</CardTitle>
-                    </CardHeader>
+            </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-slate-300">Auto-print enabled</span>
@@ -483,13 +783,13 @@ export default function AdminPage() {
                 <p className="text-sm text-slate-400">
                   WiFi: <span className="text-white font-medium">{process.env.NEXT_PUBLIC_WIFI_NAME || "iPhone-Hotspot"}</span>
                 </p>
-              </div>
+          </div>
               <Button 
                 onClick={() => setShowQR(false)}
                 className="w-full bg-white/20 hover:bg-white/30 text-white border border-white/30"
               >
                 Close
-              </Button>
+            </Button>
             </div>
           </div>
         </div>
