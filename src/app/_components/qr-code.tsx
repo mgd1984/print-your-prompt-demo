@@ -21,9 +21,9 @@ export function QRCodeDisplay({
   const [url, setUrl] = useState<string>("");
   
   useEffect(() => {
-    // Set the URL to the current host + /live
+    // Set the URL to the current host + /poll
     const baseUrl = window.location.origin;
-    setUrl(`${baseUrl}/live`);
+    setUrl(`${baseUrl}/poll`);
   }, []);
 
   if (!url) return <div className="animate-pulse bg-white/20 h-64 w-64 rounded-lg"></div>;

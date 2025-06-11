@@ -45,7 +45,7 @@ export default function GalleryPage() {
               </svg>
               Home
             </Link>
-            <Link href="/live" className="text-slate-600 hover:text-slate-900 transition-colors font-medium">
+            <Link href="/poll" className="text-slate-600 hover:text-slate-900 transition-colors font-medium">
               Live
             </Link>
             <Link 
@@ -85,7 +85,7 @@ export default function GalleryPage() {
             {/* Quick Actions */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <Link 
-                href="/live"
+                href="/poll"
                 className="group px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center"
               >
                 Create New Art

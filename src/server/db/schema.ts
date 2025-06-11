@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { 
   pgTable, 
   serial, 
+  integer,
   text, 
   timestamp, 
   boolean, 
@@ -43,7 +44,7 @@ export const votes = pgTable(
   getTableName("vote"),
   {
     id: serial("id").primaryKey(),
-    promptId: serial("prompt_id").notNull(),
+    promptId: integer("prompt_id").notNull(),
     voter: text("voter").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

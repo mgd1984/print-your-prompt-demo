@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -84,12 +84,11 @@ const DEFAULT_SETTINGS: GenerationSettings = {
 };
 
 const STYLE_PRESETS = [
-  { name: "Photo", prompt: "photorealistic, high detail, professional photography", icon: "📸" },
-  { name: "Art", prompt: "artistic, creative, expressive, beautiful composition", icon: "🎨" },
-  { name: "Minimal", prompt: "minimalist, clean, simple, elegant design", icon: "⚪" },
-  { name: "Vintage", prompt: "vintage, retro, classic, nostalgic atmosphere", icon: "📻" },
-  { name: "Fantasy", prompt: "fantasy, magical, ethereal, dreamlike", icon: "🧙" },
-  { name: "Modern", prompt: "modern, contemporary, sleek, sophisticated", icon: "🏢" }
+  { name: "Logo", prompt: "professional logo design, vector art style, clean geometric shapes, bold typography, negative space utilization, brand identity, scalable icon design, corporate minimalism", icon: "🎯" },
+  { name: "Architecture", prompt: "architectural visualization, Zaha Hadid inspired forms, parametric design, concrete and glass materials, dramatic shadows, modernist structure, architectural photography lighting", icon: "🏗️" },
+  { name: "Landscape", prompt: "epic landscape photography, golden hour lighting, misty mountains, dramatic sky, Ansel Adams composition, wide-angle vista, atmospheric perspective, natural color grading", icon: "🏔️" },
+  { name: "Circuit Art", prompt: "made entirely of electronic components, circuit board aesthetic, resistors and capacitors as building blocks, copper traces, LED lights, microchip patterns, electronic sculpture", icon: "⚡" },
+  { name: "Isometric", prompt: "isometric illustration style, 3D technical drawing, clean lines, flat colors with subtle gradients, architectural axonometric view, engineering blueprint aesthetic", icon: "📐" },
 ];
 
 export default function EnhancedImageGenerator({ 
@@ -108,6 +107,28 @@ export default function EnhancedImageGenerator({
   const [activeTab, setActiveTab] = useState('prompts');
   const [showSettings, setShowSettings] = useState(false);
   const [showStylePresets, setShowStylePresets] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Refs for click-away functionality
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const stylePresetsRef = useRef<HTMLDivElement>(null);
+  
+  // Click-away handlers
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+      if (stylePresetsRef.current && !stylePresetsRef.current.contains(event.target as Node)) {
+        setShowStylePresets(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // tRPC queries and mutations
   const generateImageMutation = api.image.generate.useMutation({
@@ -204,21 +225,6 @@ export default function EnhancedImageGenerator({
     });
   }, [printMutation]);
 
-  // Apply style preset
-  const applyStylePreset = useCallback((preset: typeof STYLE_PRESETS[0]) => {
-    const currentPrompt = selectedPrompt ? selectedPrompt.text : prompt;
-    const basePrompt = currentPrompt.replace(/,?\s*(photorealistic|artistic|minimalist|vintage|fantasy|modern)[^,]*,?\s*/gi, '').trim();
-    const newPrompt = basePrompt ? `${basePrompt}, ${preset.prompt}` : preset.prompt;
-    
-    if (selectedPrompt) {
-      setPrompt(newPrompt);
-      setSelectedPrompt(null);
-    } else {
-      setPrompt(newPrompt);
-    }
-    setShowStylePresets(false);
-  }, [prompt, selectedPrompt]);
-
   // Handle prompt selection
   const handlePromptSelect = useCallback((promptItem: PromptWithVotes) => {
     setSelectedPrompt(promptItem);
@@ -310,9 +316,61 @@ export default function EnhancedImageGenerator({
                 exit={{ opacity: 0 }}
                 className="text-center space-y-6 max-w-md"
               >
-                <div className="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center">
-                  <Camera className="h-16 w-16 text-gray-400" />
-                </div>
+                {/* Canvas Area with Loading Animation */}
+                <motion.div
+                  animate={generateImageMutation.isPending ? {
+                    scale: [1, 1.05, 1],
+                    rotate: [0, 1, -1, 0],
+                  } : {}}
+                  transition={generateImageMutation.isPending ? {
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  } : {}}
+                  className="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-purple-500/10 to-pink-500/10 flex items-center justify-center relative"
+                >
+                  <motion.div
+                    className={cn(
+                      "p-4 rounded-full border-2 border-dashed transition-all duration-300",
+                      generateImageMutation.isPending
+                        ? "border-purple-400/50 bg-purple-500/10"
+                        : "border-purple-300/30 bg-transparent"
+                    )}
+                    animate={generateImageMutation.isPending ? {
+                      borderColor: ["rgba(168, 85, 247, 0.3)", "rgba(168, 85, 247, 0.8)", "rgba(168, 85, 247, 0.3)"]
+                    } : {}}
+                    transition={generateImageMutation.isPending ? {
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    } : {}}
+                  >
+                    <ImageIcon 
+                      className={cn(
+                        "h-12 w-12 transition-all duration-300",
+                        generateImageMutation.isPending
+                          ? "text-purple-500 animate-pulse"
+                          : "text-gray-400"
+                      )} 
+                    />
+                  </motion.div>
+                  
+                  {generateImageMutation.isPending && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute -bottom-8 text-sm font-medium text-purple-600"
+                    >
+                      <motion.span
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        Generating...
+                      </motion.span>
+                    </motion.div>
+                  )}
+                </motion.div>
+                
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Ready to Create</h3>
                   <p className="text-gray-600">
@@ -325,7 +383,12 @@ export default function EnhancedImageGenerator({
         </div>
 
         {/* Bottom Prompt Input Bar */}
-        <div className="relative">
+        <div className={cn(
+          "relative",
+          variant === 'print-flow' 
+            ? "bg-slate-900/95 border-white/10" 
+            : "bg-white/95 border-gray-200/50"
+        )}>
           {/* Gradient background overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/5 to-transparent pointer-events-none" />
           
@@ -388,316 +451,353 @@ export default function EnhancedImageGenerator({
 
               {/* Main Input Row */}
               <div className="relative">
-                {/* Glow effect */}
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 rounded-2xl blur-md opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
+                {/* Subtle glow effect */}
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 rounded-2xl blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
                 
                 <div className={cn(
-                  "relative flex items-center gap-3 px-4 py-2 rounded-2xl border shadow-lg hover:shadow-xl transition-all duration-300 group focus-within:shadow-2xl",
+                  "relative flex items-center gap-2 px-4 py-3 rounded-2xl border transition-all duration-200 group",
                   variant === 'print-flow'
-                    ? "bg-slate-800/90 backdrop-blur-sm border-white/20 focus-within:border-purple-400/60 focus-within:bg-slate-800"
-                    : "bg-white/90 backdrop-blur-sm border-gray-200/60 focus-within:border-purple-300/60 focus-within:bg-white"
+                    ? "bg-slate-800/60 backdrop-blur border-white/20 focus-within:border-purple-400/40 focus-within:bg-slate-800/80"
+                    : "bg-white/90 backdrop-blur border-gray-200 focus-within:border-purple-300/50 focus-within:bg-white"
                 )}>
+                  
+                  {/* Style Preset Indicators */}
+                  {selectedPrompt && (
+                    <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-400/20">
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                      <span className={cn(
+                        "text-xs font-medium",
+                        variant === 'print-flow' ? "text-purple-300" : "text-purple-600"
+                      )}>
+                        Community
+                      </span>
+                    </div>
+                  )}
+
                   {/* Prompt Input */}
                   <div className="flex-1 relative">
-                    <div className="relative">
-                      <Textarea
-                        placeholder=""
-                        value={currentPromptText}
-                        onChange={(e) => {
-                          setPrompt(e.target.value);
-                          if (selectedPrompt) setSelectedPrompt(null);
-                        }}
-                        className={cn(
-                          "min-h-[44px] max-h-[120px] resize-none border-0 bg-transparent text-base focus:ring-0 focus:outline-none font-medium",
-                          "py-2.5 px-0 leading-6",
-                          variant === 'print-flow'
-                            ? "text-white placeholder:text-slate-400"
-                            : "text-gray-900 placeholder:text-gray-400"
-                        )}
-                        disabled={!!selectedPrompt}
-                        rows={1}
-                        style={{ lineHeight: '1.5' }}
-                      />
-                      {/* Floating label effect */}
-                      {!currentPromptText && (
-                        <div className="absolute inset-0 flex items-center pointer-events-none py-2.5">
-                          <div className={cn(
-                            "flex items-center gap-3",
-                            variant === 'print-flow' ? "text-slate-400" : "text-gray-400"
-                          )}>
-                            <Wand2 className="h-4 w-4" />
-                            <span className="text-base leading-6">Describe the image you want to create...</span>
-                          </div>
-                        </div>
+                    <Textarea
+                      ref={textareaRef}
+                      placeholder="Describe the image you want to create..."
+                      value={currentPromptText}
+                      onChange={(e) => {
+                        setPrompt(e.target.value);
+                        if (selectedPrompt) setSelectedPrompt(null);
+                      }}
+                      className={cn(
+                        "min-h-[40px] max-h-[120px] resize-none border-0 bg-transparent text-base focus:ring-0 focus:outline-none",
+                        "py-1 px-0 leading-6 placeholder:text-sm",
+                        variant === 'print-flow'
+                          ? "text-white placeholder:text-slate-400"
+                          : "text-gray-900 placeholder:text-gray-500"
                       )}
-                    </div>
+                      disabled={!!selectedPrompt}
+                      rows={1}
+                    />
                   </div>
 
-                  {/* Quick Controls */}
+                  {/* Inline Controls */}
                   <div className="flex items-center gap-1">
-                    {/* Settings Toggle */}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowSettings(!showSettings)}
+                    {/* Settings Menu */}
+                    <div className="relative" ref={settingsRef}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowSettings(!showSettings);
+                          if (!showSettings) setShowStylePresets(false); // Close other menu
+                        }}
+                        className={cn(
+                          "h-8 w-8 rounded-lg transition-all duration-200",
+                          showSettings 
+                            ? variant === 'print-flow'
+                              ? "bg-purple-500/20 text-purple-300"
+                              : "bg-purple-100 text-purple-600"
+                            : variant === 'print-flow'
+                              ? "hover:bg-white/10 text-slate-400 hover:text-slate-300"
+                              : "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                        )}
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                      
+                      {/* Minimalist Settings Panel */}
+                      <AnimatePresence>
+                        {showSettings && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            transition={{ duration: 0.15 }}
                             className={cn(
-                              "h-8 w-8 rounded-lg transition-all duration-200 hover:scale-105",
-                              showSettings 
-                                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md" 
-                                : variant === 'print-flow'
-                                  ? "hover:bg-white/10 text-slate-400 hover:text-slate-300"
-                                  : "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                              "absolute right-0 bottom-12 z-50 rounded-lg border shadow-lg w-[240px]",
+                              variant === 'print-flow'
+                                ? "bg-slate-800/95 backdrop-blur border-white/10"
+                                : "bg-white/95 backdrop-blur border-gray-200"
                             )}
                           >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-black text-white border-0 text-xs">
-                          <p>Settings</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                            <div className="p-3 space-y-3">
+                              {/* Model */}
+                              <div>
+                                <div className={cn(
+                                  "text-[10px] font-medium uppercase tracking-wider mb-1.5",
+                                  variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
+                                )}>
+                                  Model
+                                </div>
+                                <div className="grid grid-cols-3 gap-1">
+                                  {[
+                                    { value: "gpt-image-1", label: "GPT-1" },
+                                    { value: "dall-e-3", label: "DALL-E 3" },
+                                    { value: "dall-e-2", label: "DALL-E 2" }
+                                  ].map((model) => (
+                                    <button
+                                      key={model.value}
+                                      onClick={() => setSettings(prev => ({ ...prev, model: model.value as any }))}
+                                      className={cn(
+                                        "px-2 py-1.5 text-[10px] font-medium rounded border transition-all duration-150",
+                                        settings.model === model.value
+                                          ? variant === 'print-flow'
+                                            ? "bg-purple-500/30 border-purple-400/50 text-purple-200"
+                                            : "bg-purple-100 border-purple-300 text-purple-700"
+                                          : variant === 'print-flow'
+                                            ? "border-white/10 hover:bg-slate-700/50 text-slate-300"
+                                            : "border-gray-200 hover:bg-gray-50 text-gray-600"
+                                      )}
+                                    >
+                                      {model.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              {/* Size */}
+                              <div>
+                                <div className={cn(
+                                  "text-[10px] font-medium uppercase tracking-wider mb-1.5",
+                                  variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
+                                )}>
+                                  Size
+                                </div>
+                                <div className="grid grid-cols-4 gap-1">
+                                  {[
+                                    { value: "1024x1024", label: "1:1" },
+                                    { value: "1024x1536", label: "2:3" },
+                                    { value: "1536x1024", label: "3:2" },
+                                    { value: "auto", label: "Auto" }
+                                  ].map((size) => (
+                                    <button
+                                      key={size.value}
+                                      onClick={() => setSettings(prev => ({ ...prev, size: size.value as any }))}
+                                      className={cn(
+                                        "px-1.5 py-1.5 text-[10px] font-medium rounded border transition-all duration-150",
+                                        settings.size === size.value
+                                          ? variant === 'print-flow'
+                                            ? "bg-purple-500/30 border-purple-400/50 text-purple-200"
+                                            : "bg-purple-100 border-purple-300 text-purple-700"
+                                          : variant === 'print-flow'
+                                            ? "border-white/10 hover:bg-slate-700/50 text-slate-300"
+                                            : "border-gray-200 hover:bg-gray-50 text-gray-600"
+                                      )}
+                                    >
+                                      {size.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              {/* Quality & Style */}
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <div className={cn(
+                                    "text-[10px] font-medium uppercase tracking-wider mb-1.5",
+                                    variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
+                                  )}>
+                                    Quality
+                                  </div>
+                                  <div className="space-y-1">
+                                    {["standard", "hd"].map((quality) => (
+                                      <button
+                                        key={quality}
+                                        onClick={() => setSettings(prev => ({ ...prev, quality: quality as any }))}
+                                        className={cn(
+                                          "w-full px-2 py-1 text-[10px] font-medium rounded border transition-all duration-150 capitalize",
+                                          settings.quality === quality
+                                            ? variant === 'print-flow'
+                                              ? "bg-purple-500/30 border-purple-400/50 text-purple-200"
+                                              : "bg-purple-100 border-purple-300 text-purple-700"
+                                            : variant === 'print-flow'
+                                              ? "border-white/10 hover:bg-slate-700/50 text-slate-300"
+                                              : "border-gray-200 hover:bg-gray-50 text-gray-600"
+                                        )}
+                                      >
+                                        {quality}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <div className={cn(
+                                    "text-[10px] font-medium uppercase tracking-wider mb-1.5",
+                                    variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
+                                  )}>
+                                    Style
+                                  </div>
+                                  <div className="space-y-1">
+                                    {["vivid", "natural"].map((style) => (
+                                      <button
+                                        key={style}
+                                        onClick={() => setSettings(prev => ({ ...prev, style: style as any }))}
+                                        className={cn(
+                                          "w-full px-2 py-1 text-[10px] font-medium rounded border transition-all duration-150 capitalize",
+                                          settings.style === style
+                                            ? variant === 'print-flow'
+                                              ? "bg-purple-500/30 border-purple-400/50 text-purple-200"
+                                              : "bg-purple-100 border-purple-300 text-purple-700"
+                                            : variant === 'print-flow'
+                                              ? "border-white/10 hover:bg-slate-700/50 text-slate-300"
+                                              : "border-gray-200 hover:bg-gray-50 text-gray-600"
+                                        )}
+                                      >
+                                        {style}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
-                    {/* Style Presets Toggle */}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowStylePresets(!showStylePresets)}
+                    {/* Style Presets Menu */}
+                    <div className="relative" ref={stylePresetsRef}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowStylePresets(!showStylePresets);
+                          if (!showStylePresets) setShowSettings(false); // Close other menu
+                        }}
+                        className={cn(
+                          "h-8 w-8 rounded-lg transition-all duration-200",
+                          showStylePresets 
+                            ? variant === 'print-flow'
+                              ? "bg-purple-500/20 text-purple-300"
+                              : "bg-purple-100 text-purple-600"
+                            : variant === 'print-flow'
+                              ? "hover:bg-white/10 text-slate-400 hover:text-slate-300"
+                              : "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                        )}
+                      >
+                        <Palette className="h-4 w-4" />
+                      </Button>
+                      
+                      {/* Compact Style Presets */}
+                      <AnimatePresence>
+                        {showStylePresets && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            transition={{ duration: 0.15 }}
                             className={cn(
-                              "h-8 w-8 rounded-lg transition-all duration-200 hover:scale-105",
-                              showStylePresets 
-                                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md" 
-                                : variant === 'print-flow'
-                                  ? "hover:bg-white/10 text-slate-400 hover:text-slate-300"
-                                  : "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                              "absolute right-0 bottom-12 z-50 rounded-lg border shadow-lg w-[220px] max-h-[280px] overflow-y-auto",
+                              variant === 'print-flow'
+                                ? "bg-slate-800/95 backdrop-blur border-white/10"
+                                : "bg-white/95 backdrop-blur border-gray-200"
                             )}
                           >
-                            <Palette className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-black text-white border-0 text-xs">
-                          <p>Styles</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                            <div className="p-2">
+                              <div className={cn(
+                                "text-[10px] font-medium uppercase tracking-wider mb-2 px-1",
+                                variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
+                              )}>
+                                Style Presets
+                              </div>
+                              
+                              <div className="space-y-1">
+                                {STYLE_PRESETS.map((preset) => (
+                                  <button
+                                    key={preset.name}
+                                    onClick={() => {
+                                      setPrompt(preset.prompt);
+                                      setSelectedPrompt(null);
+                                      setShowStylePresets(false);
+                                    }}
+                                    className={cn(
+                                      "w-full text-left p-2 rounded border transition-all duration-150 hover:shadow-sm",
+                                      variant === 'print-flow'
+                                        ? "border-white/10 hover:bg-slate-700/50 hover:border-purple-400/30"
+                                        : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-sm">{preset.icon}</div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className={cn(
+                                          "font-medium text-xs",
+                                          variant === 'print-flow' ? "text-white" : "text-gray-900"
+                                        )}>
+                                          {preset.name}
+                                        </div>
+                                        <div className={cn(
+                                          "text-[10px] mt-0.5 line-clamp-1",
+                                          variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
+                                        )}>
+                                          {preset.prompt.split(',')[0]}...
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
                     {/* Generate Button */}
                     <Button
                       onClick={handleGenerate}
                       disabled={!canGenerate || generateImageMutation.isPending}
                       className={cn(
-                        "h-8 px-4 rounded-lg font-medium text-sm transition-all duration-300 ml-1",
-                        "bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600",
-                        "hover:from-purple-600 hover:via-pink-600 hover:to-purple-700",
-                        "shadow-md hover:shadow-lg hover:shadow-purple-500/25",
+                        "h-8 px-4 rounded-lg font-medium text-sm transition-all duration-200 ml-1",
+                        "bg-gradient-to-r from-purple-500 to-pink-500",
+                        "hover:from-purple-600 hover:to-pink-600",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
-                        "transform hover:scale-105 active:scale-95"
+                        "text-white shadow-sm hover:shadow-md"
                       )}
                     >
-                      {generateImageMutation.isPending ? (
-                        <>
-                          <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                          <span className="text-white text-sm">Generating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-3 w-3 mr-2" />
-                          <span className="text-white text-sm">Generate</span>
-                        </>
-                      )}
+                      <Sparkles className="h-3 w-3 mr-2" />
+                      <span>Generate</span>
                     </Button>
                   </div>
+                  
+                  {/* Clear selected prompt button */}
+                  {selectedPrompt && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedPrompt(null);
+                        setPrompt("");
+                      }}
+                      className={cn(
+                        "h-6 w-6 rounded-md -ml-1",
+                        variant === 'print-flow'
+                          ? "text-purple-300 hover:text-purple-200 hover:bg-purple-400/20"
+                          : "text-purple-600 hover:text-purple-700 hover:bg-purple-100/50"
+                      )}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
-
-              {/* Expandable Settings */}
-              <AnimatePresence>
-                {showSettings && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0, y: -10 }}
-                    animate={{ height: "auto", opacity: 1, y: 0 }}
-                    exit={{ height: 0, opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className={cn(
-                      "p-6 rounded-2xl border shadow-inner",
-                      variant === 'print-flow'
-                        ? "bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-white/10"
-                        : "bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200/50"
-                    )}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full" />
-                        <h3 className={cn(
-                          "text-sm font-semibold uppercase tracking-wide",
-                          variant === 'print-flow' ? "text-slate-300" : "text-gray-700"
-                        )}>Generation Settings</h3>
-                      </div>
-                      <div className="grid grid-cols-4 gap-6">
-                        <div className="space-y-3">
-                          <Label className={cn(
-                            "text-xs font-semibold uppercase tracking-wide",
-                            variant === 'print-flow' ? "text-slate-400" : "text-gray-600"
-                          )}>Model</Label>
-                          <Select
-                            value={settings.model}
-                            onValueChange={(value: GenerationSettings["model"]) =>
-                              setSettings(prev => ({ ...prev, model: value }))
-                            }
-                          >
-                            <SelectTrigger className={cn(
-                              "h-10 text-sm rounded-xl hover:border-purple-300 transition-colors",
-                              variant === 'print-flow'
-                                ? "bg-slate-700/50 border-white/20 text-white"
-                                : "bg-white border-gray-200"
-                            )}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-200">
-                              <SelectItem value="gpt-image-1">GPT Image 1</SelectItem>
-                              <SelectItem value="dall-e-3">DALL-E 3</SelectItem>
-                              <SelectItem value="dall-e-2">DALL-E 2</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label className={cn(
-                            "text-xs font-semibold uppercase tracking-wide",
-                            variant === 'print-flow' ? "text-slate-400" : "text-gray-600"
-                          )}>Size</Label>
-                          <Select
-                            value={settings.size}
-                            onValueChange={(value: GenerationSettings["size"]) =>
-                              setSettings(prev => ({ ...prev, size: value }))
-                            }
-                          >
-                            <SelectTrigger className={cn(
-                              "h-10 text-sm rounded-xl hover:border-purple-300 transition-colors",
-                              variant === 'print-flow'
-                                ? "bg-slate-700/50 border-white/20 text-white"
-                                : "bg-white border-gray-200"
-                            )}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-200">
-                              <SelectItem value="1024x1024">Square</SelectItem>
-                              <SelectItem value="1024x1536">Portrait</SelectItem>
-                              <SelectItem value="1536x1024">Landscape</SelectItem>
-                              <SelectItem value="auto">Auto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label className={cn(
-                            "text-xs font-semibold uppercase tracking-wide",
-                            variant === 'print-flow' ? "text-slate-400" : "text-gray-600"
-                          )}>Quality</Label>
-                          <Select
-                            value={settings.quality}
-                            onValueChange={(value: GenerationSettings["quality"]) =>
-                              setSettings(prev => ({ ...prev, quality: value }))
-                            }
-                          >
-                            <SelectTrigger className={cn(
-                              "h-10 text-sm rounded-xl hover:border-purple-300 transition-colors",
-                              variant === 'print-flow'
-                                ? "bg-slate-700/50 border-white/20 text-white"
-                                : "bg-white border-gray-200"
-                            )}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-200">
-                              <SelectItem value="standard">Standard</SelectItem>
-                              <SelectItem value="hd">HD</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-3">
-                          <Label className={cn(
-                            "text-xs font-semibold uppercase tracking-wide",
-                            variant === 'print-flow' ? "text-slate-400" : "text-gray-600"
-                          )}>Style</Label>
-                          <Select
-                            value={settings.style}
-                            onValueChange={(value: GenerationSettings["style"]) =>
-                              setSettings(prev => ({ ...prev, style: value }))
-                            }
-                          >
-                            <SelectTrigger className={cn(
-                              "h-10 text-sm rounded-xl hover:border-purple-300 transition-colors",
-                              variant === 'print-flow'
-                                ? "bg-slate-700/50 border-white/20 text-white"
-                                : "bg-white border-gray-200"
-                            )}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-200">
-                              <SelectItem value="vivid">Vivid</SelectItem>
-                              <SelectItem value="natural">Natural</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Expandable Style Presets */}
-              <AnimatePresence>
-                {showStylePresets && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0, y: -10 }}
-                    animate={{ height: "auto", opacity: 1, y: 0 }}
-                    exit={{ height: 0, opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className={cn(
-                      "p-6 rounded-2xl border shadow-inner",
-                      variant === 'print-flow'
-                        ? "bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-white/10"
-                        : "bg-gradient-to-br from-gray-50 to-gray-100/50 border-gray-200/50"
-                    )}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full" />
-                        <h3 className={cn(
-                          "text-sm font-semibold uppercase tracking-wide",
-                          variant === 'print-flow' ? "text-slate-300" : "text-gray-700"
-                        )}>Style Presets</h3>
-                      </div>
-                      <div className="grid grid-cols-6 gap-4">
-                        {STYLE_PRESETS.map((preset) => (
-                          <Button
-                            key={preset.name}
-                            variant="outline"
-                            size="sm"
-                            className={cn(
-                              "h-auto p-4 flex flex-col items-center gap-3 text-center rounded-xl transition-all duration-200 hover:shadow-md hover:scale-105",
-                              variant === 'print-flow'
-                                ? "bg-slate-700/30 hover:bg-gradient-to-br hover:from-purple-500/20 hover:to-pink-500/20 border-white/20 hover:border-purple-400/50 text-slate-300"
-                                : "bg-white hover:bg-gradient-to-br hover:from-purple-50 hover:to-pink-50 border-gray-200 hover:border-purple-300 text-gray-700"
-                            )}
-                            onClick={() => applyStylePreset(preset)}
-                          >
-                            <span className="text-2xl">{preset.icon}</span>
-                            <span className="text-xs font-semibold">{preset.name}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           </div>
         </div>

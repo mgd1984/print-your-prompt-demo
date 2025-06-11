@@ -217,7 +217,7 @@ export default function AdminPanel() {
           
           <div className="mt-4">
             <Link 
-              href="/live" 
+              href="/poll" 
               className="text-blue-400 hover:text-blue-300 transition-colors text-sm inline-flex items-center space-x-2"
               target="_blank"
             >

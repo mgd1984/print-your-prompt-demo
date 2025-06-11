@@ -78,7 +78,7 @@ export default function HomePage() {
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
                 <Link 
-                  href="/live"
+                  href="/poll"
                   className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center"
                 >
                   Start Creating
@@ -131,7 +131,7 @@ export default function HomePage() {
                 
                 <div className="space-y-3">
                   <Link 
-                    href="/live"
+                    href="/poll"
                     className="w-full inline-flex items-center justify-center px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors font-medium"
                   >
                     <span className="text-slate-400 mr-2">🌐</span>
@@ -155,7 +155,7 @@ export default function HomePage() {
               </svg>
               <span className="text-xs font-medium">Gallery</span>
             </Link>
-            <Link href="/live" className="flex flex-col items-center text-blue-600">
+            <Link href="/poll" className="flex flex-col items-center text-blue-600">
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
