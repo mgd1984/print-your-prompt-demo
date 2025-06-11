@@ -15,16 +15,35 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { api } from "@/trpc/react";
 import EnhancedImageGenerator from "@/app/_components/enhanced-image-generator";
+import { 
+  Volume2, 
+  VolumeX, 
+  ExternalLink, 
+  Video, 
+  Wifi, 
+  Maximize2,
+  LayoutDashboard,
+  MessageSquare,
+  ImageIcon,
+  BarChart3,
+  Settings,
+  Printer,
+  RotateCcw,
+  Images,
+  Users,
+  FileText
+} from "lucide-react";
 
 export default function AdminPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [activePanel, setActivePanel] = useState<'overview' | 'prompts' | 'settings' | 'analytics' | 'generation'>('overview');
+  const [activePanel, setActivePanel] = useState<'overview' | 'prompts' | 'settings' | 'analytics' | 'generation' | 'live'>('overview');
   const [showQR, setShowQR] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [selectedPromptForGeneration, setSelectedPromptForGeneration] = useState<string | null>(null);
+  const [liveStreamMuted, setLiveStreamMuted] = useState(false);
   const [generationSettings, setGenerationSettings] = useState({
     model: "gpt-image-1" as "gpt-image-1" | "dall-e-3" | "dall-e-2",
     quality: "standard" as "standard" | "hd",
@@ -255,52 +274,30 @@ export default function AdminPage() {
               )}
               <div className="space-y-1">
                 {[
-                  { id: 'overview', label: 'Overview', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-                  { id: 'live', label: 'Live Video', icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', isExternal: true, href: '/admin/live' },
-                  { id: 'prompts', label: 'Prompt Management', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
-                  { id: 'generation', label: 'Image Generation', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
-                  { id: 'analytics', label: 'Analytics', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-                  { id: 'settings', label: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
+                  { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
+                  { id: 'live', label: 'Live Video', Icon: Video },
+                  { id: 'prompts', label: 'Prompt Management', Icon: MessageSquare },
+                  { id: 'generation', label: 'Image Generation', Icon: ImageIcon },
+                  { id: 'analytics', label: 'Analytics', Icon: BarChart3 },
+                  { id: 'settings', label: 'Settings', Icon: Settings }
                 ].map((panel) => (
-                  panel.isExternal ? (
-                    <Link key={panel.id} href={panel.href!}>
-                      <button
-                        className={cn(
-                          "w-full flex items-center rounded-xl text-left transition-all duration-200",
-                          sidebarCollapsed ? "justify-center h-10 w-10 p-0" : "space-x-3 px-3 py-2.5",
-                          "text-slate-300 hover:text-white hover:bg-white/5"
-                        )}
-                        title={sidebarCollapsed ? panel.label : undefined}
-                      >
-                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={panel.icon} />
-                        </svg>
-                        {!sidebarCollapsed && (
-                          <span className="font-medium">{panel.label}</span>
-                        )}
-                      </button>
-                    </Link>
-                  ) : (
-                    <button
-                      key={panel.id}
-                      onClick={() => setActivePanel(panel.id as any)}
-                      className={cn(
-                        "w-full flex items-center rounded-xl text-left transition-all duration-200",
-                        sidebarCollapsed ? "justify-center h-10 w-10 p-0" : "space-x-3 px-3 py-2.5",
-                        activePanel === panel.id 
-                          ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-white border border-blue-500/30" 
-                          : "text-slate-300 hover:text-white hover:bg-white/5"
-                      )}
-                      title={sidebarCollapsed ? panel.label : undefined}
-                    >
-                      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={panel.icon} />
-                      </svg>
-                      {!sidebarCollapsed && (
-                        <span className="font-medium">{panel.label}</span>
-                      )}
-                    </button>
-                  )
+                  <button
+                    key={panel.id}
+                    onClick={() => setActivePanel(panel.id as any)}
+                    className={cn(
+                      "w-full flex items-center rounded-xl text-left transition-all duration-200",
+                      sidebarCollapsed ? "justify-center h-10 w-10 p-0" : "space-x-3 px-3 py-2.5",
+                      activePanel === panel.id 
+                        ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-white border border-blue-500/30" 
+                        : "text-slate-300 hover:text-white hover:bg-white/5"
+                    )}
+                    title={sidebarCollapsed ? panel.label : undefined}
+                  >
+                    <panel.Icon className="w-5 h-5 flex-shrink-0" />
+                    {!sidebarCollapsed && (
+                      <span className="font-medium">{panel.label}</span>
+                    )}
+                  </button>
                 ))}
               </div>
             </div>
@@ -317,9 +314,7 @@ export default function AdminPage() {
                 )}
                 title={sidebarCollapsed ? "Test Print" : undefined}
                 >
-                  <svg className={cn("w-4 h-4", !sidebarCollapsed && "mr-3")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
+                  <Printer className={cn("w-4 h-4", !sidebarCollapsed && "mr-3")} />
                   {!sidebarCollapsed && "Test Print"}
                 </Button>
                 
@@ -329,9 +324,7 @@ export default function AdminPage() {
                 )}
                 title={sidebarCollapsed ? "Reset Session" : undefined}
                 >
-                  <svg className={cn("w-4 h-4", !sidebarCollapsed && "mr-3")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <RotateCcw className={cn("w-4 h-4", !sidebarCollapsed && "mr-3")} />
                   {!sidebarCollapsed && "Reset Session"}
                 </Button>
                 
@@ -342,9 +335,7 @@ export default function AdminPage() {
                   )}
                   title={sidebarCollapsed ? "View Gallery" : undefined}
                   >
-                    <svg className={cn("w-4 h-4", !sidebarCollapsed && "mr-3")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                    <Images className={cn("w-4 h-4", !sidebarCollapsed && "mr-3")} />
                     {!sidebarCollapsed && "View Gallery"}
                   </Button>
                 </Link>
@@ -373,9 +364,7 @@ export default function AdminPage() {
                           <p className="text-3xl font-bold text-white">1</p>
                         </div>
                         <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-xl flex items-center justify-center">
-                          <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
+                          <Users className="w-6 h-6 text-blue-400" />
                         </div>
                       </div>
                     </CardContent>
@@ -389,9 +378,7 @@ export default function AdminPage() {
                           <p className="text-3xl font-bold text-white">24</p>
                         </div>
                         <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center">
-                          <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
+                          <FileText className="w-6 h-6 text-green-400" />
                         </div>
                       </div>
                     </CardContent>
@@ -405,9 +392,7 @@ export default function AdminPage() {
                           <p className="text-3xl font-bold text-white">8</p>
                         </div>
                         <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center">
-                          <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                          <ImageIcon className="w-6 h-6 text-purple-400" />
                         </div>
                       </div>
                     </CardContent>
@@ -528,6 +513,111 @@ export default function AdminPage() {
                         defaultValue="10" 
                         className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
                       />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activePanel === 'live' && (
+              <div className="h-full flex flex-col space-y-6">
+                {/* Live Video Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">Live Video Feed</h2>
+                    <p className="text-slate-400">Monitor the print area in real-time</p>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <Badge className="bg-red-500/90 text-white border-red-400">
+                      <span className="w-2 h-2 mr-2 rounded-full bg-white animate-pulse"></span>
+                      LIVE
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Video Feed with Overlaid Controls */}
+                <Card className="bg-white/5 backdrop-blur-xl border border-white/10 flex-1">
+                  <CardContent className="p-0 h-full">
+                    <div className="relative h-full min-h-[70vh] bg-black rounded-lg overflow-hidden group">
+                      <iframe
+                        src="https://vdo.ninja/?scene&room=promptprints&password=06182025&cover&fit"
+                        className="w-full h-full border-0"
+                        allow="camera; microphone; fullscreen"
+                        title="PrintCam Live Stream"
+                        style={{ objectFit: 'cover' }}
+                      />
+                      
+                      {/* Top Right Controls */}
+                      <div className="absolute top-4 right-4 flex items-center space-x-3">
+                                                 {/* Audio Control */}
+                         <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center space-x-2 text-white border border-white/20">
+                           {liveStreamMuted ? (
+                             <VolumeX className="w-4 h-4" />
+                           ) : (
+                             <Volume2 className="w-4 h-4" />
+                           )}
+                           <Switch 
+                             checked={!liveStreamMuted} 
+                             onCheckedChange={(checked: boolean) => setLiveStreamMuted(!checked)}
+                           />
+                         </div>
+
+                                                 {/* Send Video Button */}
+                         <Button 
+                           variant="ghost" 
+                           size="sm" 
+                           className="bg-black/60 backdrop-blur-sm hover:bg-black/80 border border-white/20 hover:border-white/40 text-white transition-all duration-200 rounded-lg"
+                           onClick={() => window.open('https://vdo.ninja/?push&room=promptprints&password=06182025', '_blank')}
+                         >
+                           <ExternalLink className="w-4 h-4 mr-2" />
+                           Send Video
+                         </Button>
+                      </div>
+
+                                             {/* Top Left Stream Info */}
+                       <div className="absolute top-4 left-4">
+                         <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 text-white border border-white/20">
+                           <div className="flex items-center space-x-2">
+                             <Video className="w-4 h-4" />
+                             <span className="text-sm font-medium">Stream Controls</span>
+                           </div>
+                         </div>
+                       </div>
+                      
+                      {/* Bottom Left Video Info */}
+                      <div className="absolute bottom-4 left-4">
+                        <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 text-white border border-white/20">
+                          <p className="text-sm font-medium">PrintCam Live</p>
+                          <p className="text-xs text-slate-300">Room: promptprints</p>
+                        </div>
+                      </div>
+
+                                             {/* Bottom Right Room Info */}
+                       <div className="absolute bottom-4 right-4">
+                         <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 text-white border border-white/20">
+                           <div className="flex items-center space-x-2">
+                             <Wifi className="w-3 h-3 text-green-400" />
+                             <span className="text-xs text-slate-300">Connected</span>
+                           </div>
+                         </div>
+                       </div>
+
+                                             {/* Fullscreen Button - appears on hover */}
+                       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                         <Button 
+                           variant="ghost" 
+                           size="lg" 
+                           className="bg-black/70 backdrop-blur-sm hover:bg-black/90 border border-white/30 hover:border-white/50 text-white transition-all duration-200 rounded-xl p-4"
+                           onClick={() => {
+                             const iframe = document.querySelector('iframe[title="PrintCam Live Stream"]') as HTMLIFrameElement;
+                             if (iframe?.requestFullscreen) {
+                               iframe.requestFullscreen();
+                             }
+                           }}
+                         >
+                           <Maximize2 className="w-6 h-6" />
+                         </Button>
+                       </div>
                     </div>
                   </CardContent>
                 </Card>

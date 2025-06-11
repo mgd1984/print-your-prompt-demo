@@ -476,23 +476,23 @@ export default function EnhancedImageGenerator({
 
                   {/* Prompt Input */}
                   <div className="flex-1 relative">
-                    <Textarea
+                      <Textarea
                       ref={textareaRef}
                       placeholder="Describe the image you want to create..."
-                      value={currentPromptText}
-                      onChange={(e) => {
-                        setPrompt(e.target.value);
-                        if (selectedPrompt) setSelectedPrompt(null);
-                      }}
-                      className={cn(
+                        value={currentPromptText}
+                        onChange={(e) => {
+                          setPrompt(e.target.value);
+                          if (selectedPrompt) setSelectedPrompt(null);
+                        }}
+                        className={cn(
                         "min-h-[40px] max-h-[120px] resize-none border-0 bg-transparent text-base focus:ring-0 focus:outline-none",
                         "py-1 px-0 leading-6 placeholder:text-sm",
-                        variant === 'print-flow'
-                          ? "text-white placeholder:text-slate-400"
+                          variant === 'print-flow'
+                            ? "text-white placeholder:text-slate-400"
                           : "text-gray-900 placeholder:text-gray-500"
-                      )}
-                      disabled={!!selectedPrompt}
-                      rows={1}
+                        )}
+                        disabled={!!selectedPrompt}
+                        rows={1}
                     />
                   </div>
 
@@ -500,26 +500,26 @@ export default function EnhancedImageGenerator({
                   <div className="flex items-center gap-1">
                     {/* Settings Menu */}
                     <div className="relative" ref={settingsRef}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                          <Button
+                            variant="ghost"
+                            size="sm"
                         onClick={() => {
                           setShowSettings(!showSettings);
                           if (!showSettings) setShowStylePresets(false); // Close other menu
                         }}
-                        className={cn(
+                            className={cn(
                           "h-8 w-8 rounded-lg transition-all duration-200",
-                          showSettings 
+                              showSettings 
                             ? variant === 'print-flow'
                               ? "bg-purple-500/20 text-purple-300"
                               : "bg-purple-100 text-purple-600"
-                            : variant === 'print-flow'
-                              ? "hover:bg-white/10 text-slate-400 hover:text-slate-300"
-                              : "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
-                        )}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
+                                : variant === 'print-flow'
+                                  ? "hover:bg-white/10 text-slate-400 hover:text-slate-300"
+                                  : "hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                            )}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
                       
                       {/* Minimalist Settings Panel */}
                       <AnimatePresence>
@@ -554,7 +554,7 @@ export default function EnhancedImageGenerator({
                                     <button
                                       key={model.value}
                                       onClick={() => setSettings(prev => ({ ...prev, model: model.value as any }))}
-                                      className={cn(
+                      className={cn(
                                         "px-2 py-1.5 text-[10px] font-medium rounded border transition-all duration-150",
                                         settings.model === model.value
                                           ? variant === 'print-flow'
@@ -568,17 +568,17 @@ export default function EnhancedImageGenerator({
                                       {model.label}
                                     </button>
                                   ))}
-                                </div>
-                              </div>
-                              
+                </div>
+              </div>
+
                               {/* Size */}
                               <div>
-                                <div className={cn(
+                    <div className={cn(
                                   "text-[10px] font-medium uppercase tracking-wider mb-1.5",
                                   variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
                                 )}>
                                   Size
-                                </div>
+                      </div>
                                 <div className="grid grid-cols-4 gap-1">
                                   {[
                                     { value: "1024x1024", label: "1:1" },
@@ -604,8 +604,8 @@ export default function EnhancedImageGenerator({
                                     </button>
                                   ))}
                                 </div>
-                              </div>
-                              
+                        </div>
+
                               {/* Quality & Style */}
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
@@ -614,7 +614,7 @@ export default function EnhancedImageGenerator({
                                     variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
                                   )}>
                                     Quality
-                                  </div>
+                        </div>
                                   <div className="space-y-1">
                                     {["standard", "hd"].map((quality) => (
                                       <button
@@ -635,8 +635,8 @@ export default function EnhancedImageGenerator({
                                       </button>
                                     ))}
                                   </div>
-                                </div>
-                                
+                        </div>
+
                                 <div>
                                   <div className={cn(
                                     "text-[10px] font-medium uppercase tracking-wider mb-1.5",
@@ -664,12 +664,12 @@ export default function EnhancedImageGenerator({
                                       </button>
                                     ))}
                                   </div>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
                     </div>
 
                     {/* Style Presets Menu */}
@@ -696,9 +696,9 @@ export default function EnhancedImageGenerator({
                       </Button>
                       
                       {/* Compact Style Presets */}
-                      <AnimatePresence>
-                        {showStylePresets && (
-                          <motion.div
+              <AnimatePresence>
+                {showStylePresets && (
+                  <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -711,28 +711,28 @@ export default function EnhancedImageGenerator({
                             )}
                           >
                             <div className="p-2">
-                              <div className={cn(
+                    <div className={cn(
                                 "text-[10px] font-medium uppercase tracking-wider mb-2 px-1",
                                 variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
                               )}>
                                 Style Presets
-                              </div>
+                      </div>
                               
                               <div className="space-y-1">
-                                {STYLE_PRESETS.map((preset) => (
+                        {STYLE_PRESETS.map((preset) => (
                                   <button
-                                    key={preset.name}
+                            key={preset.name}
                                     onClick={() => {
                                       setPrompt(preset.prompt);
                                       setSelectedPrompt(null);
                                       setShowStylePresets(false);
                                     }}
-                                    className={cn(
+                            className={cn(
                                       "w-full text-left p-2 rounded border transition-all duration-150 hover:shadow-sm",
-                                      variant === 'print-flow'
+                              variant === 'print-flow'
                                         ? "border-white/10 hover:bg-slate-700/50 hover:border-purple-400/30"
                                         : "border-gray-200 hover:bg-gray-50 hover:border-purple-300"
-                                    )}
+                            )}
                                   >
                                     <div className="flex items-center gap-2">
                                       <div className="text-sm">{preset.icon}</div>
@@ -752,13 +752,13 @@ export default function EnhancedImageGenerator({
                                       </div>
                                     </div>
                                   </button>
-                                ))}
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                        ))}
+                      </div>
                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
                     {/* Generate Button */}
                     <Button
