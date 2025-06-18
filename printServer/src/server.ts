@@ -669,6 +669,209 @@ app.get('/printer-status', authenticate, async (_req: Request, res: Response) =>
   }
 });
 
+// Get available media settings and profiles (protected)
+app.get('/media-settings', authenticate, async (_req: Request, res: Response) => {
+  try {
+    const config = loadPrinterConfig();
+    
+    // Extract media settings from config
+    const mediaSettings = {
+      mediaTypes: config.mediaTypes || {},
+      pageSizes: config.pageSizes || {},
+      qualitySettings: config.qualitySettings || {},
+      paperSources: config.paperSources || {},
+      printerProfiles: {} as Record<string, { displayName: string; profiles: any }>
+    };
+    
+    // Add printer-specific profiles
+    config.printers.forEach(printer => {
+      if (printer.profiles) {
+        mediaSettings.printerProfiles[printer.name] = {
+          displayName: printer.displayName,
+          profiles: printer.profiles
+        };
+      }
+    });
+    
+    res.json(mediaSettings);
+  } catch (error) {
+    console.error('Error getting media settings:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `Failed to get media settings: ${errorMessage}` });
+  }
+});
+
+// Print with specific profile or custom settings (protected)
+app.post('/print-with-settings', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { 
+      imageUrl, 
+      useHighQuality = true, 
+      profile,
+      customSettings = {}
+    } = req.body as { 
+      imageUrl?: string, 
+      useHighQuality?: boolean,
+      profile?: string,
+      customSettings?: Record<string, string>
+    };
+    
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'No image URL provided' });
+    }
+    
+    console.log(`Received print request with settings:`);
+    console.log(`- Image: ${imageUrl}`);
+    console.log(`- Profile: ${profile || 'default'}`);
+    console.log(`- Custom settings:`, customSettings);
+    
+    // Fetch and process the image (same as before)
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      return res.status(400).json({ 
+        error: `Failed to fetch image: ${response.status} ${response.statusText}` 
+      });
+    }
+    
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    const timestamp = Date.now();
+    const jpegFilename = `image-${timestamp}.jpg`;
+    const tiffFilename = `image-${timestamp}.tiff`;
+    const jpegPath = path.join(uploadDir, jpegFilename);
+    const tiffPath = path.join(uploadDir, tiffFilename);
+    
+    await sharp(buffer)
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toFile(jpegPath);
+    
+    await sharp(buffer)
+      .tiff({
+        quality: 100,
+        compression: 'lzw',
+        predictor: 'horizontal'
+      })
+      .toFile(tiffPath);
+    
+    // Get printers and find the best one
+    const printers = await getPrinterNames();
+    if (printers.length === 0) {
+      return res.status(500).json({ error: 'No printers found' });
+    }
+    
+    const bestPrinter = findBestPrinter(printers);
+    if (!bestPrinter) {
+      return res.status(500).json({ error: 'No suitable printer found' });
+    }
+    
+    // Determine print settings
+    let printOptions = { ...bestPrinter.options };
+    
+    // Load configuration to get profiles
+    const config = loadPrinterConfig();
+    const printerConfig = config.printers.find(p => p.name === bestPrinter.printer);
+    
+    // Apply profile settings if specified
+    if (profile && printerConfig?.profiles?.[profile]) {
+      console.log(`Applying profile: ${profile}`);
+      printOptions = {
+        ...printOptions,
+        ...printerConfig.profiles[profile].options
+      };
+    }
+    
+    // Apply custom settings (these override profile settings)
+    if (Object.keys(customSettings).length > 0) {
+      console.log('Applying custom settings:', customSettings);
+      printOptions = {
+        ...printOptions,
+        ...customSettings
+      };
+    }
+    
+    console.log(`Final print options:`, printOptions);
+    
+    // Connection options
+    const connectionOptions: PrintParams = {
+      printer: bestPrinter.printer,
+      printerOptions: printOptions
+    };
+    
+    // Use TIFF or JPEG based on preference
+    const filePath = useHighQuality ? tiffPath : jpegPath;
+    console.log(`Using ${useHighQuality ? 'TIFF' : 'JPEG'} for printing: ${filePath}`);
+    
+    // Verify file exists
+    if (!fs.existsSync(filePath)) {
+      console.error(`ERROR: File does not exist at path: ${filePath}`);
+      return res.status(500).json({ error: 'Generated image file not found' });
+    }
+    
+    console.log("Sending print job with custom settings:", connectionOptions);
+    
+    // Set timeout and print
+    const printTimeout = 30000;
+    const printPromise = new Promise<any>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Print operation timed out'));
+      }, printTimeout);
+      
+      printFile(filePath, connectionOptions)
+        .then(result => {
+          clearTimeout(timeout);
+          resolve(result);
+        })
+        .catch(error => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
+    
+    try {
+      const result = await printPromise;
+      console.log("Print job submitted successfully:", result);
+      
+      // Clean up files after delay
+      setTimeout(() => {
+        try {
+          if (fs.existsSync(jpegPath)) fs.unlinkSync(jpegPath);
+          if (fs.existsSync(tiffPath)) fs.unlinkSync(tiffPath);
+          console.log("Temporary files cleaned up");
+        } catch (e) {
+          console.error("Error cleaning up files:", e);
+        }
+      }, 30000);
+      
+      res.json({ 
+        success: true, 
+        printer: bestPrinter.printer,
+        jobId: result.requestId,
+        profileUsed: profile,
+        settingsApplied: printOptions,
+        highQuality: useHighQuality
+      });
+      
+    } catch (error) {
+      console.error('Print operation failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ 
+        error: `Print failed: ${errorMessage}`,
+        printer: bestPrinter.printer,
+        settingsAttempted: printOptions
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error in print-with-settings:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: `Print request failed: ${errorMessage}` });
+  }
+});
+
 // Start the server
 app.listen(PORT, async () => {
   console.log(`Print server running on http://localhost:${PORT}`);

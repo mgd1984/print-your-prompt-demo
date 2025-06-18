@@ -19,8 +19,8 @@ export default function PromptVoting() {
   const [prompt, setPrompt] = useState("");
   const [username, setUsername] = useState("");
   const [voterId, setVoterId] = useState<string | null>(null);
-  const [timer, setTimer] = useState<number>(120);
-  const [isActive, setIsActive] = useState<boolean>(true);
+  const [timer, setTimer] = useState<number>(0);
+  const [isActive, setIsActive] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   
@@ -58,26 +58,64 @@ export default function PromptVoting() {
   const promptsQuery = api.prompt.getAll.useQuery(
     { seconds: 3600, limit: 50 },
     { 
-      refetchInterval: 30000, // Always refresh every 30 seconds, even when voting is inactive
+      refetchInterval: 3000, // Even more frequent updates
       refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true, // Refetch when window gets focus
+      refetchOnMount: true, // Always refetch on mount
+      staleTime: 0, // Consider data stale immediately
     }
   );
   
-  // Timer countdown
+  // Debug logging to see what's happening with prompts
   useEffect(() => {
-    if (!isActive) return;
+    console.log('Prompts query data:', promptsQuery.data);
+    console.log('Prompts list:', promptsQuery.data?.prompts);
+    console.log('Has active session:', promptsQuery.data?.hasActiveSession);
+    console.log('Is loading:', promptsQuery.isLoading);
+    console.log('Is error:', promptsQuery.isError);
+  }, [promptsQuery.data, promptsQuery.isLoading, promptsQuery.isError]);
+  
+  // Update session state and timer based on API response
+  useEffect(() => {
+    const data = promptsQuery.data;
+    if (!data) return;
     
-    if (timer > 0) {
-      const interval = setInterval(() => {
-        setTimer((prevTimer) => prevTimer - 1);
-      }, 1000);
+    const hasActiveSession = data.hasActiveSession;
+    const sessionStartedAt = data.sessionStartedAt;
+    
+    setIsActive(hasActiveSession);
+    
+    if (hasActiveSession && sessionStartedAt) {
+      // Calculate elapsed time since session started
+      const startTime = new Date(sessionStartedAt).getTime();
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - startTime) / 1000);
+      const sessionDuration = 120; // 2 minutes total
+      const remainingTime = Math.max(0, sessionDuration - elapsedSeconds);
       
-      return () => clearInterval(interval);
+      setTimer(remainingTime);
     } else {
-      setIsActive(false);
-      // Make sure we get one final refresh of the prompts
-      promptsQuery.refetch();
+      setTimer(0);
     }
+  }, [promptsQuery.data]);
+  
+  // Timer countdown - only runs when active
+  useEffect(() => {
+    if (!isActive || timer <= 0) return;
+    
+    const interval = setInterval(() => {
+      setTimer((prevTimer) => {
+        const newTimer = prevTimer - 1;
+        if (newTimer <= 0) {
+          setIsActive(false);
+          // Trigger a final refresh to get updated state
+          promptsQuery.refetch();
+        }
+        return Math.max(0, newTimer);
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
   }, [timer, isActive, promptsQuery]);
   
   // Submit a prompt
@@ -85,7 +123,10 @@ export default function PromptVoting() {
     onSuccess: () => {
       setPrompt("");
       setIsSubmitting(false);
+      // Force immediate refetch to show new prompt
       promptsQuery.refetch();
+      // Also invalidate the query to ensure fresh data
+      console.log('Prompt submitted successfully, forcing refetch');
     },
     onError: (error) => {
       setIsSubmitting(false);
@@ -208,7 +249,7 @@ export default function PromptVoting() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : promptList.length > 0 ? (
           <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-[#e5e7eb] h-full">
             <div className="p-4 sm:p-4 border-b border-[#e5e7eb]">
               <h3 className="text-lg font-semibold text-[#1e3a8a]">Results</h3>
@@ -248,23 +289,69 @@ export default function PromptVoting() {
               </div>
             </div>
           </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-[#e5e7eb] h-full">
+            <div className="p-4 sm:p-4 border-b border-[#e5e7eb]">
+              <h3 className="text-lg font-semibold text-[#1e3a8a]">Waiting for Session</h3>
+            </div>
+            
+            <div className="p-4 sm:p-6 text-center">
+              <div className="space-y-4">
+                <div className="w-16 h-16 mx-auto bg-[#4285f4]/10 rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-8 h-8 text-[#4285f4]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h4 className="text-xl font-semibold text-[#1e3a8a] mb-4">No Active Voting Session</h4>
+                <p className="text-[#3b82f6]/80 leading-relaxed max-w-sm mx-auto">
+                  The voting session hasn't started yet. Stay tuned for when the host begins a new round of voting!
+                </p>
+              </div>
+              
+              <div className="mt-8">
+                <Link
+                  href="/gallery"
+                  className="text-[#4285f4] hover:text-[#1e3a8a] transition-colors flex items-center justify-center py-2 px-4 rounded-lg hover:bg-[#4285f4]/5 min-h-[44px] touch-manipulation"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                  View gallery of past images
+                </Link>
+              </div>
+            </div>
+          </div>
         )}
       </div>
       
       {/* Right side - Prompts list */}
       <div className="w-full lg:w-5/12">
         <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-[#e5e7eb] h-full flex flex-col">
-          <div className="p-4 sm:p-5 border-b border-[#e5e7eb]">
+          <div className="p-4 sm:p-5 border-b border-[#e5e7eb] flex justify-between items-center">
             <h3 className="text-lg sm:text-xl font-semibold text-[#1e3a8a]">{isActive ? "Current Prompts" : "All Prompts"}</h3>
+            <button 
+              onClick={() => {
+                console.log('Manual refresh clicked');
+                promptsQuery.refetch();
+              }}
+              className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+            >
+              Refresh
+            </button>
           </div>
           
           <div className="flex-1 overflow-hidden">
-            {promptsQuery.isLoading ? (
+            {promptsQuery.isLoading || promptsQuery.isFetching ? (
               <div className="p-6 flex justify-center items-center h-full min-h-[200px]">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce"></div>
-                  <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                  <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce"></div>
+                    <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                    <div className="w-3 h-3 rounded-full bg-[#4285f4] animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                  </div>
+                  <p className="text-xs text-[#3b82f6]/60">
+                    {promptsQuery.isLoading ? 'Loading...' : 'Refreshing...'}
+                  </p>
                 </div>
               </div>
             ) : promptList.length === 0 ? (

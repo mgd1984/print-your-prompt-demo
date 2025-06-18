@@ -84,23 +84,29 @@ export const promptRouter = createTRPCRouter({
       seconds: z.number().min(1).default(60)
     }))
     .query(async ({ ctx, input }) => {
-      const { limit, seconds } = input;
+      const { limit } = input;
       
-      // Calculate timestamp for filtering recent prompts
-      const timestamp = new Date();
-      timestamp.setSeconds(timestamp.getSeconds() - seconds);
-      
-      // Get active session - only check if there's an active session, don't return early
-      const hasActiveSession = await ctx.db.query.sessions.findFirst({
+      // Get active session - this is crucial for filtering
+      const activeSession = await ctx.db.query.sessions.findFirst({
         where: eq(sessions.active, true),
         orderBy: [desc(sessions.startedAt)],
       });
       
-      // Query for prompts and their vote counts
-      // Note: While proper SQL would use GROUP BY, we're using a workaround
-      // due to drizzle-orm limitations with complex joins
+      if (!activeSession) {
+        return { 
+          prompts: [],
+          hasActiveSession: false,
+          sessionStartedAt: null,
+          sessionId: null
+        };
+      }
+      
+      // Only get prompts created after the current session started
       const allPrompts = await ctx.db.query.prompts.findMany({
-        where: gte(prompts.createdAt, timestamp),
+        where: and(
+          gte(prompts.createdAt, activeSession.startedAt),
+          eq(prompts.status, "pending")
+        ),
         orderBy: [desc(prompts.createdAt)],
         limit,
       });
@@ -128,7 +134,9 @@ export const promptRouter = createTRPCRouter({
       
       return { 
         prompts: result,
-        hasActiveSession: !!hasActiveSession 
+        hasActiveSession: true,
+        sessionStartedAt: activeSession.startedAt,
+        sessionId: activeSession.id
       };
     }),
     
@@ -263,6 +271,61 @@ export const promptRouter = createTRPCRouter({
   getVoterId: publicProcedure
     .query(() => {
       return { voterId: uuidv4() };
+    }),
+
+  // Get all prompts for admin panel (not filtered by session)
+  getAllForAdmin: publicProcedure
+    .input(z.object({ 
+      limit: z.number().min(1).max(100).default(50),
+      hours: z.number().min(1).default(24) // Show prompts from last 24 hours by default
+    }))
+    .query(async ({ ctx, input }) => {
+      const { limit, hours } = input;
+      
+      // Calculate timestamp for filtering recent prompts
+      const timestamp = new Date();
+      timestamp.setHours(timestamp.getHours() - hours);
+      
+      // Get active session info
+      const activeSession = await ctx.db.query.sessions.findFirst({
+        where: eq(sessions.active, true),
+        orderBy: [desc(sessions.startedAt)],
+      });
+      
+      // Get all prompts from the specified time period
+      const allPrompts = await ctx.db.query.prompts.findMany({
+        where: gte(prompts.createdAt, timestamp),
+        orderBy: [desc(prompts.createdAt)],
+        limit,
+      });
+      
+      // Get votes for each prompt
+      const result = await Promise.all(
+        allPrompts.map(async (prompt) => {
+          const promptVotes = await ctx.db.query.votes.findMany({
+            where: eq(votes.promptId, prompt.id),
+          });
+          
+          return {
+            id: prompt.id,
+            text: prompt.text,
+            username: prompt.username,
+            status: prompt.status,
+            createdAt: prompt.createdAt,
+            votes: promptVotes.length,
+          };
+        })
+      );
+      
+      // Sort by vote count descending
+      result.sort((a, b) => b.votes - a.votes);
+      
+      return { 
+        prompts: result,
+        hasActiveSession: !!activeSession,
+        sessionStartedAt: activeSession?.startedAt || null,
+        sessionId: activeSession?.id || null
+      };
     }),
     
   // Get completed prompts with images for the gallery

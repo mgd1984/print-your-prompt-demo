@@ -3,18 +3,51 @@ import path from 'path';
 import type { PrintParams } from 'node-cups';
 import { exec } from 'child_process';
 
-// Types
+// Types for media settings
+export interface MediaType {
+  displayName: string;
+  CNIJMediaType: string;
+  description: string;
+}
+
+export interface PageSize {
+  displayName: string;
+  PageSize: string;
+}
+
+export interface QualitySetting {
+  displayName: string;
+  CNIJPrintQuality: string;
+  description: string;
+}
+
+export interface PaperSource {
+  displayName: string;
+  CNIJMediaSupply: string;
+  description: string;
+}
+
+export interface PrintProfile {
+  displayName: string;
+  options: Record<string, string>;
+}
+
 export interface PrinterConfig {
   name: string;
   displayName: string;
   options: Record<string, string>;
   priority: number; // Higher number = higher priority
+  profiles?: Record<string, PrintProfile>;
 }
 
 export interface PrinterConfigFile {
   version: string;
   lastUpdated: string;
   defaultPrinterName?: string;
+  mediaTypes?: Record<string, MediaType>;
+  pageSizes?: Record<string, PageSize>;
+  qualitySettings?: Record<string, QualitySetting>;
+  paperSources?: Record<string, PaperSource>;
   printers: PrinterConfig[];
 }
 
@@ -30,10 +63,10 @@ const defaultConfig: PrinterConfigFile = {
       priority: 200,
       options: {
         "PageSize": "13x19",
-        "InputSlot": "by-pass-tray",
-        "MediaType": "photographic",
+        "CNIJMediaSupply": "38",
+        "CNIJMediaType": "51",
         "ColorModel": "RGB",
-        "cupsPrintQuality": "High",
+        "CNIJPrintQuality": "10",
         "CNIJInkWarning": "0",
         "CNIJInkCartridgeSettings": "0"
       }
@@ -44,10 +77,10 @@ const defaultConfig: PrinterConfigFile = {
       priority: 100,
       options: {
         "PageSize": "13x19", 
-        "InputSlot": "by-pass-tray",
-        "MediaType": "photographic",
+        "CNIJMediaSupply": "38",
+        "CNIJMediaType": "51",
         "ColorModel": "RGB",
-        "cupsPrintQuality": "High",
+        "CNIJPrintQuality": "10",
         "CNIJInkWarning": "0"
       }
     },

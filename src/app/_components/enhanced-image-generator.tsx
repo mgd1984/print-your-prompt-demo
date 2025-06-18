@@ -33,6 +33,7 @@ import type { TRPCClientErrorLike } from "@trpc/client";
 import type { AppRouter } from "@/server/api/root";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,6 +43,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import PrintSettingsPanel from "./print-settings-panel";
 
 // Types
 interface GenerationSettings {
@@ -279,20 +281,39 @@ export default function EnhancedImageGenerator({
                     fill
                     className="object-cover"
                   />
-                  {/* Print button overlay */}
+                  {/* Print settings panel overlay */}
                   <div className="absolute top-4 right-4">
-                    <Button
-                      size="sm"
-                      onClick={() => handlePrint(generatedImage)}
-                      disabled={printMutation.isPending}
-                      className="bg-black/50 hover:bg-black/70 text-white border-0"
-                    >
-                      {printMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Printer className="h-4 w-4" />
-                      )}
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="bg-black/50 hover:bg-black/70 text-white border-0"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+                        <DialogHeader className="flex-shrink-0">
+                          <DialogTitle>Print Settings</DialogTitle>
+                          <DialogDescription>
+                            Configure your print settings for the best results
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-y-auto">
+                          <PrintSettingsPanel 
+                            imageUrl={generatedImage}
+                            onPrintStart={() => {}}
+                            onPrintComplete={(result) => {
+                              console.log("Print completed:", result);
+                            }}
+                            onPrintError={(error) => {
+                              console.error("Print error:", error);
+                            }}
+                            className="border-0 shadow-none bg-transparent"
+                          />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
                 {selectedPrompt && (
@@ -1027,22 +1048,41 @@ export default function EnhancedImageGenerator({
                                 <Wand2 className="h-4 w-4" />
                               </Button>
                               {item.imageUrl && (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700 shadow-sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePrint(item.imageUrl!);
-                                  }}
-                                  disabled={printMutation.isPending}
-                                >
-                                  {printMutation.isPending ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Printer className="h-4 w-4" />
-                                  )}
-                                </Button>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700 shadow-sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                    >
+                                      <Printer className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+                                    <DialogHeader className="flex-shrink-0">
+                                      <DialogTitle>Print Settings</DialogTitle>
+                                      <DialogDescription>
+                                        Configure print settings for: {item.text.slice(0, 50)}...
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="flex-1 overflow-y-auto">
+                                      <PrintSettingsPanel 
+                                        imageUrl={item.imageUrl}
+                                        onPrintStart={() => {}}
+                                        onPrintComplete={(result) => {
+                                          console.log("Print completed:", result);
+                                        }}
+                                        onPrintError={(error) => {
+                                          console.error("Print error:", error);
+                                        }}
+                                        className="border-0 shadow-none bg-transparent"
+                                      />
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
                               )}
                             </div>
                           </div>
@@ -1194,18 +1234,36 @@ export default function EnhancedImageGenerator({
                     >
                       Use This Prompt
                     </Button>
-                    <Button
-                      onClick={() => handlePrint(selectedGalleryImage.imageUrl!)}
-                      disabled={printMutation.isPending}
-                      className="flex-1 gap-2"
-                    >
-                      {printMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Printer className="h-4 w-4" />
-                      )}
-                      Print Image
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="flex-1 gap-2">
+                          <Printer className="h-4 w-4" />
+                          Print Image
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+                        <DialogHeader className="flex-shrink-0">
+                          <DialogTitle>Print Settings</DialogTitle>
+                          <DialogDescription>
+                            Configure print settings for this image
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-y-auto">
+                          <PrintSettingsPanel 
+                            imageUrl={selectedGalleryImage.imageUrl!}
+                            onPrintStart={() => {}}
+                            onPrintComplete={(result) => {
+                              console.log("Print completed:", result);
+                              setSelectedGalleryImage(null);
+                            }}
+                            onPrintError={(error) => {
+                              console.error("Print error:", error);
+                            }}
+                            className="border-0 shadow-none bg-transparent"
+                          />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 )}
               </div>

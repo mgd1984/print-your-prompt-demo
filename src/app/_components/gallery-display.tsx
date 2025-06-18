@@ -4,6 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { api } from "@/trpc/react";
 import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import PrintSettingsPanel from "./print-settings-panel";
 
 type GalleryItem = {
   id: number;
@@ -217,26 +220,35 @@ export default function GalleryDisplay() {
               <p className="text-[#1e3a8a] font-medium mb-4">{selectedImage.text}</p>
               
               <div className="mb-4 border-t border-[#e5e7eb] pt-4">
-                <div className="flex items-center mb-3">
-                  <input
-                    type="checkbox"
-                    id="high-quality-gallery"
-                    checked={useHighQuality}
-                    onChange={() => setUseHighQuality(!useHighQuality)}
-                    className="mr-2 h-4 w-4 rounded border-[#e5e7eb] text-[#4285f4] focus:ring-[#4285f4]"
-                  />
-                  <label htmlFor="high-quality-gallery" className="text-sm text-[#1e3a8a]">
-                    Use high-quality printing
-                  </label>
-                </div>
-                
-                <button
-                  onClick={handlePrintImage}
-                  disabled={isPrinting}
-                  className="w-full py-2 bg-[#4285f4] hover:bg-[#3b7bf2] text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isPrinting ? "Printing..." : "Send to Print"}
-                </button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="w-full py-2 bg-[#4285f4] hover:bg-[#3b7bf2] text-white font-medium">
+                      Configure & Print
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+                    <DialogHeader className="flex-shrink-0">
+                      <DialogTitle>Print Settings</DialogTitle>
+                      <DialogDescription>
+                        Configure print settings for this image
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto">
+                      <PrintSettingsPanel 
+                        imageUrl={selectedImage.imageUrl!}
+                        onPrintStart={() => {}}
+                        onPrintComplete={(result) => {
+                          console.log("Print completed:", result);
+                          closeModal();
+                        }}
+                        onPrintError={(error) => {
+                          console.error("Print error:", error);
+                        }}
+                        className="border-0 shadow-none bg-transparent"
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
               
               <div className="flex justify-between items-center mt-2">

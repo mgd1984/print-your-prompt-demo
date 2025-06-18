@@ -39,15 +39,118 @@ The system uses this priority order:
 4. Canon_PRO_1000_series (Network printer)
 5. Canon_PRO_1000_series_2/3 (USB/IPP backups)
 
-### 3. CIS-Specific Print Options
+### 3. Media Settings Configuration
+
+The system now supports detailed media settings configuration through both the web interface and the print server configuration file.
+
+#### Available Media Types
+
+The Canon PRO-1000 uses numeric codes for media types:
+
+```json
+{
+  "photographic_glossy": {
+    "displayName": "Photographic Glossy",
+    "CNIJMediaType": "51",
+    "description": "High-quality glossy photo paper (default)"
+  },
+  "photographic_semigloss": {
+    "displayName": "Photographic Semi-Gloss", 
+    "CNIJMediaType": "50",
+    "description": "Semi-gloss photo paper"
+  },
+  "matte_photo": {
+    "displayName": "Matte Photo Paper",
+    "CNIJMediaType": "28",
+    "description": "Matte finish photo paper"
+  },
+  "fine_art": {
+    "displayName": "Fine Art Paper",
+    "CNIJMediaType": "63",
+    "description": "Fine art/canvas paper"
+  },
+  "plain_paper": {
+    "displayName": "Plain Paper",
+    "CNIJMediaType": "0",
+    "description": "Standard plain paper"
+  }
+}
+```
+
+#### Print Profiles
+
+Pre-configured profiles for common use cases:
+
+- **Photo - Glossy Paper**: 13x19", Glossy media, Highest quality, RGB16
+- **Photo - Matte Paper**: 13x19", Matte media, Highest quality, RGB16  
+- **Fine Art Print**: 13x19", Fine art media, Maximum quality, RGB16, Unidirectional
+- **Draft/Test Print**: Letter size, Plain paper, Draft quality, RGB
+
+#### Paper Source Settings
+
+Canon PRO-1000 has two paper loading options with specific CUPS codes:
+
+- **Top Feed** (`CNIJMediaSupply: "7"`): Main paper slot, handles up to 300g/m²
+- **Manual Feed Tray** (`CNIJMediaSupply: "38"`): Rear slot, handles up to 400g/m² for thick papers
+
+#### Quality Settings
+
+Available quality levels with Canon numeric codes:
+
+- **Draft** (`CNIJPrintQuality: "0"`): Fast, draft quality
+- **Standard** (`CNIJPrintQuality: "5"`): Standard quality
+- **High** (`CNIJPrintQuality: "10"`): High quality (default)
+- **Highest** (`CNIJPrintQuality: "15"`): Highest quality
+- **Maximum** (`CNIJPrintQuality: "20"`): Maximum quality (slowest)
+
+### 4. Using Media Settings
+
+#### Web Interface
+
+The web application now includes a Print Settings Panel that allows you to:
+
+1. **Select Print Profiles**: Choose from pre-configured profiles optimized for different media types
+2. **Custom Settings**: Manually select media type, page size, and quality
+3. **File Quality**: Choose between TIFF (maximum quality) or JPEG (faster processing)
+
+#### API Endpoints
+
+For programmatic access:
+
+```bash
+# Get available media settings
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://your-ngrok-url.ngrok.io/media-settings
+
+# Print with specific profile
+curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"imageUrl": "https://example.com/image.jpg", "profile": "photo_glossy"}' \
+  https://your-ngrok-url.ngrok.io/print-with-settings
+
+# Print with custom settings
+curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "imageUrl": "https://example.com/image.jpg",
+    "customSettings": {
+      "CNIJMediaType": "28",
+      "PageSize": "8x10",
+      "CNIJPrintQuality": "20"
+    }
+  }' \
+  https://your-ngrok-url.ngrok.io/print-with-settings
+```
+
+### 5. CIS-Specific Print Options
 
 ```json
 {
   "PageSize": "13x19",
-  "InputSlot": "by-pass-tray",
-  "MediaType": "photographic",
+  "CNIJMediaSupply": "7",
+  "CNIJMediaType": "51",
   "ColorModel": "RGB",
-  "cupsPrintQuality": "High",
+  "CNIJPrintQuality": "10",
   "CNIJInkWarning": "0",
   "CNIJInkCartridgeSettings": "0"
 }
@@ -88,7 +191,7 @@ If normal printing fails, the system retries with minimal options:
 {
   "PageSize": "Letter",
   "ColorModel": "RGB",
-  "cupsPrintQuality": "Normal",
+  "CNIJPrintQuality": "5",
   "CNIJInkWarning": "0",
   "printer-error-policy": "retry-current-job"
 }
@@ -97,8 +200,12 @@ If normal printing fails, the system retries with minimal options:
 ### Manual Testing
 
 ```bash
-# Test basic printing
-echo "USB Test - $(date)" | lp -d Canon_PRO_1000_USB -o CNIJInkWarning=0
+# Test with specific media settings
+echo "USB Test - $(date)" | lp -d Canon_PRO_1000_USB \
+  -o CNIJMediaType=51 \
+  -o CNIJPrintQuality=10 \
+  -o PageSize=13x19 \
+  -o CNIJInkWarning=0
 
 # Check queue status
 lpq -P Canon_PRO_1000_USB
@@ -107,15 +214,32 @@ lpq -P Canon_PRO_1000_USB
 lpstat -p Canon_PRO_1000_USB -l
 ```
 
+### Media Type Troubleshooting
+
+If you're getting media-related errors:
+
+1. **Check Available Media Types**:
+   ```bash
+   lpoptions -p Canon_PRO_1000_USB -l | grep CNIJMediaType
+   ```
+
+2. **Test with Plain Paper**:
+   ```bash
+   lp -d Canon_PRO_1000_USB -o CNIJMediaType=0 -o CNIJInkWarning=0 /etc/passwd
+   ```
+
+3. **Verify Paper is Loaded**: Ensure the correct paper type is loaded in the appropriate paper source (Top Feed or Manual Feed Tray)
+
 ## Configuration Files
 
 ### Main Application
 - `src/server/api/routers/printer.ts` - Main printer logic with hardcoded USB priority and CIS settings
+- `src/app/_components/print-settings-panel.tsx` - Web interface for media settings
 
 ### Print Server (Single Source of Truth)
-- `printServer/config/printers.json` - **Primary printer configuration file**
-- `printServer/src/printerConfig.ts` - Configuration management functions
-- `printServer/src/server.ts` - Print server with enhanced printer discovery
+- `printServer/config/printers.json` - **Primary printer configuration file** with media settings
+- `printServer/src/printerConfig.ts` - Configuration management functions with TypeScript types
+- `printServer/src/server.ts` - Print server with media settings endpoints
 
 **Architecture Note**: The main application has printer settings hardcoded for maximum reliability with your specific CIS setup, while the print server uses the configuration file for flexibility when running as a standalone service.
 
@@ -135,12 +259,14 @@ The system logs all printer operations with detailed debugging:
 - CIS workaround application
 - Job monitoring and recovery
 - Fallback printer attempts
+- Media settings application
 
 ### Regular Maintenance
 1. Check USB connection periodically
 2. Monitor print queue for stuck jobs
 3. Verify CIS ink levels manually (sensors disabled)
 4. Test print functionality after system updates
+5. Verify media settings match loaded paper type
 
 ## Emergency Procedures
 
@@ -222,11 +348,24 @@ curl https://your-ngrok-url.ngrok.io/health
 curl https://your-ngrok-url.ngrok.io/printers \
   -H "Authorization: Bearer your-token"
 
+# Test media settings endpoint
+curl https://your-ngrok-url.ngrok.io/media-settings \
+  -H "Authorization: Bearer your-token"
+
 # Monitor ngrok traffic
 # Visit http://localhost:4040 for ngrok web interface
 ```
 
-## Configuration Files
+## Summary
 
-### Main Application
-- `
+Your Canon PRO-1000 setup now supports:
+
+✅ **USB-prioritized connection** for CIS reliability  
+✅ **Automatic media type detection** with numeric codes  
+✅ **Pre-configured print profiles** for common use cases  
+✅ **Custom media settings** via web interface and API  
+✅ **Quality level selection** from draft to maximum  
+✅ **CIS-specific workarounds** for sensor conflicts  
+✅ **Production deployment** via ngrok tunnel  
+
+The system automatically handles the complexity of Canon's numeric media codes while providing an intuitive interface for selecting paper types and quality settings.

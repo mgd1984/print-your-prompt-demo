@@ -5,6 +5,9 @@ import { api } from "@/trpc/react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import PrintSettingsPanel from "./print-settings-panel";
 
 type PromptWithVotes = {
   id: number;
@@ -24,7 +27,7 @@ type WinnerData = {
 
 export default function AdminPanel() {
   const [generatingImage, setGeneratingImage] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState<number>(0);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptWithVotes | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -32,23 +35,61 @@ export default function AdminPanel() {
   
   const router = useRouter();
   
-  // Get all prompts
-  const promptsQuery = api.prompt.getAll.useQuery(
-    { seconds: 3600, limit: 100 },
+  // Get all prompts for admin (shows all prompts, not just current session)
+  const promptsQuery = api.prompt.getAllForAdmin.useQuery(
+    { hours: 24, limit: 100 },
     { 
-      refetchInterval: 30000, // Always refresh every 30 seconds
+      refetchInterval: 5000, // Match voting page refresh rate
       refetchIntervalInBackground: true,
     }
   );
   
-  // Use the hasActiveSession flag from the API response
+  // Use the session data from the API response
   const hasActiveSession = !!promptsQuery.data?.hasActiveSession;
+  const sessionStartedAt = promptsQuery.data?.sessionStartedAt;
+  
+  // Update countdown based on actual session timing
+  useEffect(() => {
+    const data = promptsQuery.data;
+    if (!data || !data.hasActiveSession || !data.sessionStartedAt) {
+      setCountdown(0);
+      return;
+    }
+    
+    // Calculate elapsed time since session started
+    const startTime = new Date(data.sessionStartedAt).getTime();
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - startTime) / 1000);
+    const sessionDuration = 120; // 2 minutes total - same as voting page
+    const remainingTime = Math.max(0, sessionDuration - elapsedSeconds);
+    
+    setCountdown(remainingTime);
+  }, [promptsQuery.data]);
+  
+  // Timer countdown - only runs when active
+  useEffect(() => {
+    if (!hasActiveSession || countdown <= 0) return;
+    
+    const interval = setInterval(() => {
+      setCountdown((prevTimer) => {
+        const newTimer = prevTimer - 1;
+        if (newTimer <= 0) {
+          // Auto-end session when timer expires
+          endSession.mutate();
+          getWinner.mutate();
+        }
+        return Math.max(0, newTimer);
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [countdown, hasActiveSession]);
   
   // Start a new session
   const startSession = api.prompt.startSession.useMutation({
     onSuccess: () => {
       promptsQuery.refetch();
-      setCountdown(30);
+      // Don't set countdown here - let the useEffect handle it from API data
     },
   });
   
@@ -56,7 +97,7 @@ export default function AdminPanel() {
   const endSession = api.prompt.endSession.useMutation({
     onSuccess: () => {
       promptsQuery.refetch();
-      setCountdown(null);
+      setCountdown(0);
     },
   });
   
@@ -132,23 +173,6 @@ export default function AdminPanel() {
     },
   });
   
-  // Countdown timer
-  useEffect(() => {
-    // Update to also consider the hasActiveSession flag from the API
-    if (countdown === null && !hasActiveSession) return;
-    
-    if (countdown !== null && countdown > 0) {
-      const interval = setInterval(() => {
-        setCountdown((prevCountdown) => (prevCountdown !== null ? prevCountdown - 1 : null));
-      }, 1000);
-      
-      return () => clearInterval(interval);
-    } else if (countdown === 0) {
-      endSession.mutate();
-      getWinner.mutate();
-    }
-  }, [countdown, endSession, getWinner, hasActiveSession]);
-  
   const handleStartSession = () => {
     startSession.mutate();
   };
@@ -190,7 +214,7 @@ export default function AdminPanel() {
             <div>
               <h4 className="text-base font-medium text-white">Voting Session</h4>
               <p className="text-sm text-slate-300">
-                {countdown !== null
+                {countdown !== 0
                   ? `Running - ${countdown}s remaining`
                   : "Not running"}
               </p>
@@ -200,7 +224,7 @@ export default function AdminPanel() {
               <button
                 onClick={handleStartSession}
                 className="rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 px-4 py-2 font-medium text-white disabled:opacity-50 text-sm transition-all duration-200 shadow-lg"
-                disabled={countdown !== null}
+                disabled={countdown !== 0}
               >
                 Start New Session
               </button>
@@ -208,7 +232,7 @@ export default function AdminPanel() {
               <button
                 onClick={handleEndSession}
                 className="rounded-lg bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 px-4 py-2 font-medium text-white disabled:opacity-50 text-sm transition-all duration-200 shadow-lg"
-                disabled={countdown === null}
+                disabled={countdown === 0}
               >
                 End Session
               </button>
@@ -233,13 +257,20 @@ export default function AdminPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl shadow-lg overflow-hidden">
           <div className="p-6 border-b border-white/10">
-            <h3 className="text-lg font-semibold text-white">All Prompts</h3>
+            <h3 className="text-lg font-semibold text-white">Prompt Management</h3>
+            <p className="text-sm text-slate-400 mt-1">All prompts from the last 24 hours</p>
           </div>
           
           <div className="p-6">
-            {countdown === null && promptList.length > 0 && (
+            {hasActiveSession && (
+              <div className="mb-4 bg-green-500/10 border border-green-400/30 rounded-lg p-3">
+                <p className="text-sm text-green-300">✓ Active session running - new prompts will appear here</p>
+              </div>
+            )}
+            
+            {!hasActiveSession && promptList.length > 0 && (
               <div className="mb-4 bg-blue-500/10 border border-blue-400/30 rounded-lg p-3">
-                <p className="text-sm text-blue-300">Session not active. Select a prompt to generate an image.</p>
+                <p className="text-sm text-blue-300">Session not active. Select any prompt to generate an image.</p>
               </div>
             )}
             
@@ -247,9 +278,12 @@ export default function AdminPanel() {
               <p className="text-slate-300 text-center py-8">Loading prompts...</p>
             ) : sortedPrompts.length === 0 ? (
               <p className="text-slate-300 text-center py-8">
-                {hasActiveSession 
-                  ? "No prompts submitted yet in this session." 
-                  : "No prompts available. Start a new session to collect prompts."}
+                No prompts found in the last 24 hours.
+                {hasActiveSession && (
+                  <span className="block text-sm text-slate-400 mt-2">
+                    New prompts from the active session will appear here.
+                  </span>
+                )}
               </p>
             ) : (
               <div className="max-h-96 overflow-y-auto pr-2">
@@ -315,35 +349,34 @@ export default function AdminPanel() {
                       />
                     </div>
                     
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="high-quality"
-                          checked={useHighQuality}
-                          onChange={() => setUseHighQuality(!useHighQuality)}
-                          className="mr-3 h-4 w-4 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
-                        />
-                        <label htmlFor="high-quality" className="text-sm text-slate-300">
-                          Use high-quality printing
-                        </label>
-                      </div>
-                      
-                      <button
-                        onClick={handlePrintImage}
-                        className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                        disabled={isPrinting}
-                      >
-                        {isPrinting ? (
-                          <span className="flex items-center justify-center space-x-2">
-                            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-6a2 2 0 00-2 2v6a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                            <span>Printing...</span>
-                          </span>
-                        ) : "Print Image"}
-                      </button>
-                    </div>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-lg shadow-lg">
+                          Configure & Print
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+                        <DialogHeader className="flex-shrink-0">
+                          <DialogTitle>Print Settings</DialogTitle>
+                          <DialogDescription>
+                            Configure print settings for: {selectedPrompt.text.slice(0, 50)}...
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-y-auto">
+                          <PrintSettingsPanel 
+                            imageUrl={imageSrc}
+                            onPrintStart={() => {}}
+                            onPrintComplete={(result) => {
+                              console.log("Print completed:", result);
+                            }}
+                            onPrintError={(error) => {
+                              console.error("Print error:", error);
+                            }}
+                            className="border-0 shadow-none bg-transparent"
+                          />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 )}
               </div>

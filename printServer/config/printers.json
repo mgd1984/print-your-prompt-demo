@@ -2,6 +2,119 @@
   "version": "1.0",
   "lastUpdated": "2025-05-27T12:20:30.000Z",
   "defaultPrinterName": "Canon_PRO_1000_USB",
+  "mediaTypes": {
+    "photographic_glossy": {
+      "displayName": "Photographic Glossy",
+      "CNIJMediaType": "51",
+      "description": "High-quality glossy photo paper (default)"
+    },
+    "photographic_semigloss": {
+      "displayName": "Photographic Semi-Gloss", 
+      "CNIJMediaType": "50",
+      "description": "Semi-gloss photo paper"
+    },
+    "matte_photo": {
+      "displayName": "Matte Photo Paper",
+      "CNIJMediaType": "28",
+      "description": "Matte finish photo paper"
+    },
+    "fine_art": {
+      "displayName": "Fine Art Paper",
+      "CNIJMediaType": "63",
+      "description": "Fine art/canvas paper"
+    },
+    "plain_paper": {
+      "displayName": "Plain Paper",
+      "CNIJMediaType": "0",
+      "description": "Standard plain paper"
+    },
+    "premium_matte": {
+      "displayName": "Premium Matte",
+      "CNIJMediaType": "42",
+      "description": "Premium matte paper"
+    }
+  },
+  "pageSizes": {
+    "letter": {
+      "displayName": "Letter (8.5x11\")",
+      "PageSize": "Letter"
+    },
+    "letter_fullbleed": {
+      "displayName": "Letter Full Bleed",
+      "PageSize": "Letter.FullBleed"
+    },
+    "13x19": {
+      "displayName": "13x19\" (Super B)",
+      "PageSize": "13x19"
+    },
+    "a4": {
+      "displayName": "A4",
+      "PageSize": "A4"
+    },
+    "a4_fullbleed": {
+      "displayName": "A4 Full Bleed",
+      "PageSize": "A4.FullBleed"
+    },
+    "a3": {
+      "displayName": "A3",
+      "PageSize": "A3"
+    },
+    "a3_fullbleed": {
+      "displayName": "A3 Full Bleed",
+      "PageSize": "A3.FullBleed"
+    },
+    "4x6": {
+      "displayName": "4x6\"",
+      "PageSize": "4x6"
+    },
+    "5x7": {
+      "displayName": "5x7\"",
+      "PageSize": "5x7"
+    },
+    "8x10": {
+      "displayName": "8x10\"",
+      "PageSize": "8x10"
+    }
+  },
+    "qualitySettings": {
+    "draft": {
+      "displayName": "Draft",
+      "CNIJPrintQuality": "0",
+      "description": "Fast, draft quality"
+    },
+    "standard": {
+      "displayName": "Standard", 
+      "CNIJPrintQuality": "5",
+      "description": "Standard quality"
+    },
+    "high": {
+      "displayName": "High",
+      "CNIJPrintQuality": "10",
+      "description": "High quality (default)"
+    },
+    "highest": {
+      "displayName": "Highest",
+      "CNIJPrintQuality": "15",
+      "description": "Highest quality"
+    },
+    "maximum": {
+      "displayName": "Maximum",
+      "CNIJPrintQuality": "20",
+      "description": "Maximum quality (slowest)"
+    }
+  },
+  "paperSources": {
+    "top_feed": {
+      "displayName": "Top Feed",
+      "CNIJMediaSupply": "7",
+      "description": "Main paper slot (up to 300g/m²)"
+    },
+    "manual_feed": {
+      "displayName": "Manual Feed Tray",
+      "CNIJMediaSupply": "38", 
+      "description": "Rear paper slot (up to 400g/m²)"
+    }
+  },
   "printers": [
     {
       "name": "Canon_PRO_1000_USB",
@@ -9,12 +122,59 @@
       "priority": 200,
       "options": {
         "PageSize": "13x19",
-        "InputSlot": "by-pass-tray",
-        "MediaType": "photographic",
+        "CNIJMediaSupply": "38",
+        "CNIJMediaType": "51",
         "ColorModel": "RGB",
-        "cupsPrintQuality": "High",
+        "CNIJPrintQuality": "10",
         "CNIJInkWarning": "0",
         "CNIJInkCartridgeSettings": "0"
+      },
+      "profiles": {
+        "photo_glossy": {
+          "displayName": "Photo - Glossy Paper",
+          "options": {
+            "PageSize": "13x19",
+            "CNIJMediaSupply": "7",
+            "CNIJMediaType": "51",
+            "CNIJPrintQuality": "15",
+            "ColorModel": "RGB16",
+            "CNIJInkWarning": "0"
+          }
+        },
+                "photo_matte": {
+          "displayName": "Photo - Matte Paper",
+          "options": {
+            "PageSize": "13x19",
+            "CNIJMediaSupply": "7",
+            "CNIJMediaType": "28",
+            "CNIJPrintQuality": "15",
+            "ColorModel": "RGB16",
+            "CNIJInkWarning": "0"
+          }
+        },
+        "fine_art": {
+          "displayName": "Fine Art Print",
+          "options": {
+            "PageSize": "13x19",
+            "CNIJMediaSupply": "38",
+            "CNIJMediaType": "63",
+            "CNIJPrintQuality": "20",
+            "ColorModel": "RGB16",
+            "CNIJUnidirPrint": "2",
+            "CNIJInkWarning": "0"
+          }
+        },
+        "draft": {
+          "displayName": "Draft/Test Print",
+          "options": {
+            "PageSize": "Letter",
+            "CNIJMediaSupply": "7",
+            "CNIJMediaType": "0",
+            "CNIJPrintQuality": "0",
+            "ColorModel": "RGB",
+            "CNIJInkWarning": "0"
+          }
+        }
       }
     },
     {
@@ -23,10 +183,10 @@
       "priority": 100,
       "options": {
         "PageSize": "13x19", 
-        "InputSlot": "by-pass-tray",
-        "MediaType": "photographic",
+        "CNIJMediaSupply": "38",
+        "CNIJMediaType": "51",
         "ColorModel": "RGB",
-        "cupsPrintQuality": "High",
+        "CNIJPrintQuality": "10",
         "CNIJInkWarning": "0"
       }
     },
