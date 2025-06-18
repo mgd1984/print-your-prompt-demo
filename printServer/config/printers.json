@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "lastUpdated": "2025-05-27T12:20:30.000Z",
-  "defaultPrinterName": "Canon_PRO_1000_USB",
+  "defaultPrinterName": "HP_ENVY_Inspire_7900_series",
   "mediaTypes": {
     "photographic_glossy": {
       "displayName": "Photographic Glossy",
@@ -116,6 +116,41 @@
     }
   },
   "printers": [
+    {
+      "name": "HP_ENVY_Inspire_7900_series",
+      "displayName": "HP ENVY Inspire 7900 series",
+      "priority": 300,
+      "options": {
+        "PageSize": "Letter",
+        "InputSlot": "Auto",
+        "MediaType": "Auto", 
+        "ColorModel": "RGB",
+        "cupsPrintQuality": "High",
+        "Resolution": "600dpi"
+      },
+      "profiles": {
+        "photo": {
+          "displayName": "Photo Quality",
+          "options": {
+            "PageSize": "Letter",
+            "MediaType": "PhotoPaper",
+            "cupsPrintQuality": "High",
+            "ColorModel": "RGB",
+            "Resolution": "1200dpi"
+          }
+        },
+        "draft": {
+          "displayName": "Draft Quality",
+          "options": {
+            "PageSize": "Letter",
+            "MediaType": "PlainPaper",
+            "cupsPrintQuality": "Draft",
+            "ColorModel": "RGB",
+            "Resolution": "300dpi"
+          }
+        }
+      }
+    },
     {
       "name": "Canon_PRO_1000_USB",
       "displayName": "Canon Pro 1000 (Direct USB)",

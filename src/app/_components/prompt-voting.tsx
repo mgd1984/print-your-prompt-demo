@@ -58,11 +58,11 @@ export default function PromptVoting() {
   const promptsQuery = api.prompt.getAll.useQuery(
     { seconds: 3600, limit: 50 },
     { 
-      refetchInterval: 3000, // Even more frequent updates
+      refetchInterval: 10000, // Slower refresh - 10 seconds to give time to read prompts
       refetchIntervalInBackground: true,
       refetchOnWindowFocus: true, // Refetch when window gets focus
       refetchOnMount: true, // Always refetch on mount
-      staleTime: 0, // Consider data stale immediately
+      staleTime: 5000, // Keep data fresh for 5 seconds
     }
   );
   
