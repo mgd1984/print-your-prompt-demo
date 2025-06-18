@@ -159,9 +159,9 @@ export default function EnhancedImageGenerator({
     }
   });
 
-  // Get prompts from the polling system
-  const promptsQuery = api.prompt.getAll.useQuery(
-    { limit: 50, seconds: 3600 },
+  // Get prompts from the most recent completed session for image generation
+  const promptsQuery = api.prompt.getLatestCompletedSession.useQuery(
+    { limit: 50 },
     { 
       refetchInterval: 30000,
       refetchIntervalInBackground: true,
@@ -863,10 +863,16 @@ export default function EnhancedImageGenerator({
               variant === 'print-flow' ? "border-white/10" : "border-gray-200"
             )}>
               <div className="flex items-center justify-between">
-                <h3 className={cn(
-                  "text-lg font-semibold",
-                  variant === 'print-flow' ? "text-white" : "text-gray-900"
-                )}>Community Prompts</h3>
+                <div>
+                  <h3 className={cn(
+                    "text-lg font-semibold",
+                    variant === 'print-flow' ? "text-white" : "text-gray-900"
+                  )}>Community Prompts</h3>
+                  <p className={cn(
+                    "text-xs mt-1",
+                    variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
+                  )}>From the most recent completed poll</p>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -980,7 +986,11 @@ export default function EnhancedImageGenerator({
                     <p className={cn(
                       "text-sm",
                       variant === 'print-flow' ? "text-slate-400" : "text-gray-500"
-                    )}>No prompts submitted yet</p>
+                    )}>
+                      {promptsQuery.data?.hasSession 
+                        ? "No prompts found in the most recent poll"
+                        : "No completed polls yet. Start a voting session to collect prompts!"}
+                    </p>
                   </div>
                 )}
               </TabsContent>

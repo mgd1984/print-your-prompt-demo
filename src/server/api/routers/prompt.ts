@@ -452,4 +452,68 @@ export const promptRouter = createTRPCRouter({
         });
       }
     }),
+
+  // Get prompts from the most recent completed session for image generation
+  getLatestCompletedSession: publicProcedure
+    .input(z.object({ 
+      limit: z.number().min(1).max(100).default(50)
+    }))
+    .query(async ({ ctx, input }) => {
+      const { limit } = input;
+      
+      // Try to get the most recent completed session
+      const latestCompletedSession = await ctx.db.query.sessions.findFirst({
+        where: eq(sessions.active, false),
+        orderBy: [desc(sessions.startedAt)],
+      });
+      
+      // If no completed session, try to get the most recent session regardless of status
+      const fallbackSession = latestCompletedSession || await ctx.db.query.sessions.findFirst({
+        orderBy: [desc(sessions.startedAt)],
+      });
+      
+      if (!fallbackSession) {
+        return { 
+          prompts: [],
+          hasSession: false,
+          sessionId: null,
+          sessionEndedAt: null
+        };
+      }
+      
+      // Get all prompts from that session timeframe
+      const sessionPrompts = await ctx.db.query.prompts.findMany({
+        where: gte(prompts.createdAt, fallbackSession.startedAt),
+        orderBy: [desc(prompts.createdAt)],
+        limit,
+      });
+      
+      // Get votes for each prompt
+      const result = await Promise.all(
+        sessionPrompts.map(async (prompt) => {
+          const promptVotes = await ctx.db.query.votes.findMany({
+            where: eq(votes.promptId, prompt.id),
+          });
+          
+          return {
+            id: prompt.id,
+            text: prompt.text,
+            username: prompt.username,
+            status: prompt.status,
+            createdAt: prompt.createdAt,
+            votes: promptVotes.length,
+          };
+        })
+      );
+      
+      // Sort by vote count descending
+      result.sort((a, b) => b.votes - a.votes);
+      
+      return { 
+        prompts: result,
+        hasSession: true,
+        sessionId: fallbackSession.id,
+        sessionEndedAt: fallbackSession.endedAt
+      };
+    }),
 }); 
