@@ -52,4 +52,4 @@ To test if your Vercel app can reach your print server:
 3. Deploy your Vercel app with the proper environment variables
 4. Try generating and printing an image
 
-If everything is configured correctly, your Vercel-deployed app should be able to send print jobs to your local Canon Pro 1000 printer! 
+If everything is configured correctly, your Vercel-deployed app should be able to send print jobs to your local printer.
