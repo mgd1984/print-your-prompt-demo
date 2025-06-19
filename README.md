@@ -35,7 +35,7 @@ Want to run this for your next presentation? Here's the 5-minute setup:
 
 - 📱 **QR Code Access** — Audience scans to join instantly
 - 🗳️ **Real-time Voting** — Live polls with immediate results
-- 🎨 **AI Image Generation** — OpenAI DALL-E 3 integration
+- 🎨 **AI Image Generation** — OpenAI integration
 - 🖨️ **Professional Printing** — Direct USB or network printing to compatible printers
 - 👨‍💼 **Admin Dashboard** — Full control over sessions and prompts
 - 📊 **Live Gallery** — Real-time display of generated images
