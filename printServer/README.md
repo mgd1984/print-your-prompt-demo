@@ -4,7 +4,7 @@ A local print server that bridges your deployed Print Your Prompt app with a loc
 
 ## Why This Exists
 
-When your main app is deployed to **Vercel** (or any cloud platform) but your **Canon PRO-1000 printer is local**, you need a way to connect them. This print server runs locally and creates a secure tunnel (via ngrok) that your cloud app can send print jobs to.
+When your main app is deployed to **Vercel** (or any cloud platform) but your printer is local, you need a way to connect them. This print server runs locally and creates a secure tunnel (via ngrok) that your cloud app can send print jobs to.
 
 **Architecture**: `Vercel App → ngrok tunnel → Local Print Server → USB → Canon PRO-1000`
 
