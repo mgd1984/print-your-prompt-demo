@@ -4,26 +4,25 @@
 
 **Originally presented at**: AI Tinkerer's Club Toronto Meetup (June 2025)  
 
-## What This Does
+## What This Is
 
-This is a **real-time audience engagement tool** for AI/tech presentations. Your audience scans a QR code, submits creative prompts, votes on their favorites, and watches as the winning prompt gets turned into an AI-generated image that prints live on your connected printer.
+An **interactive audience engagement tool** for AI/tech presentations. Audience scans a QR code, submits creative prompts, votes on their favorites, and watches as the winning prompt gets turned into an AI-generated image that prints live to a connected printer.
 
 Perfect for:
-- **AI meetups & conferences** — Interactive demos that wow your audience
+- **AI meetups & conferences** — Interactive demos that involve the audience
 - **Workshops & hackathons** — Collaborative prompt engineering exercises  
 - **Art installations** — Community-driven AI art creation
-- **Office demos** — Show off your AI + hardware integration skills
 
 ## How It Works
 
 The magic happens in 6 simple steps:
 
-1. **🎯 Setup** — Admin opens the control panel, audience sees QR code
-2. **📝 Collect** — Audience scans QR code and submits creative prompts
-3. **🗳️ Vote** — Real-time voting on all submitted prompts
-4. **🏆 Winner** — Highest-voted prompt automatically selected
-5. **🎨 Generate** — Image generation model (gpt-image-1) creates an image from the winning prompt
-6. **🖨️ Print** — Physical artwork prints immediately on your connected printer
+1. **Setup** — Admin opens the control panel, audience sees QR code
+2. **Collect** — Audience scans QR code and submits creative prompts
+3. **Vote** — Real-time voting on all submitted prompts
+4. **Winner** — Highest-voted prompt automatically selected
+5. **Generate** — Image generation model (gpt-image-1) creates an image from the winning prompt
+6. **Print** — Physical artwork prints immediately on your connected printer
 
 Perfect for creating **tangible AI art** that your audience can take home!
 
@@ -33,13 +32,13 @@ Want to run this for your next presentation? Here's the 5-minute setup:
 
 ## Features
 
-- 📱 **QR Code Access** — Audience scans to join instantly
-- 🗳️ **Real-time Voting** — Live polls with immediate results
-- 🎨 **AI Image Generation** — OpenAI integration
-- 🖨️ **Professional Printing** — Direct USB or network printing to compatible printers
-- 👨‍💼 **Admin Dashboard** — Full control over sessions and prompts
-- 📊 **Live Gallery** — Real-time display of generated images
-- 🔧 **Flexible Setup** — Works locally or deployed to Vercel
+-  **QR Code Access** — Audience scans to join instantly
+-  **Real-time Voting** — Live polls with immediate results
+-  **AI Image Generation** — OpenAI integration
+-  **Professional Printing** — Direct USB or network printing to compatible printers
+-  **Admin Dashboard** — Full control over sessions and prompts
+-  **Live Gallery** — Real-time display of generated images
+-  **Flexible Setup** — Works locally or deployed to Vercel
 
 ## Setup
 
