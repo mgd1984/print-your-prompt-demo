@@ -6,7 +6,7 @@
 
 ## What This Is
 
-An **interactive audience engagement tool** for AI/tech presentations. Audience scans a QR code, submits creative prompts, votes on their favorites, and watches as the winning prompt gets turned into an AI-generated image that prints live to a connected printer.
+An **interactive audience engagement tool** for AI/tech presentations. Participants scan a QR code, submit creative prompts, vote on their favorites, and watche as the winning prompt gets turned into an AI-generated image that prints live to a connected printer.
 
 Perfect for:
 - **AI meetups & conferences** — Interactive demos that involve the audience
