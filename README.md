@@ -22,7 +22,7 @@ The magic happens in 6 simple steps:
 2. **📝 Collect** — Audience scans QR code and submits creative prompts
 3. **🗳️ Vote** — Real-time voting on all submitted prompts
 4. **🏆 Winner** — Highest-voted prompt automatically selected
-5. **🎨 Generate** — OpenAI DALL-E 3 creates an image from the winning prompt
+5. **🎨 Generate** — Image generation model (gpt-image-1) creates an image from the winning prompt
 6. **🖨️ Print** — Physical artwork prints immediately on your connected printer
 
 Perfect for creating **tangible AI art** that your audience can take home!
